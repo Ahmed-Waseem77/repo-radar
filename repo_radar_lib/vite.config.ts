@@ -12,7 +12,8 @@ const dirname = typeof import.meta.dirname !== 'undefined' ? import.meta.dirname
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
   plugins: [react(), dts({
-    include: ['src']
+    include: ['src'],
+    tsconfigPath: './tsconfig.app.json'
   }) // generates .d.ts files
   ],
   build: {
@@ -24,7 +25,7 @@ export default defineConfig({
     },
     rollupOptions: {
       // don't bundle react/mui into your library — the consuming app provides them
-      external: ['react', 'react-dom', '@mui/material', '@emotion/react', '@emotion/styled'],
+      external: ['react', 'react/jsx-runtime', 'react/jsx-dev-runtime', 'react-dom', '@mui/material', '@emotion/react', '@emotion/styled'],
       output: {
         globals: {
           react: 'React',

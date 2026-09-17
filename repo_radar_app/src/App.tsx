@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Button } from '@radar-repo/radar-repo-lib'
 import heroImg from './assets/hero.png'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
@@ -21,13 +22,11 @@ function App() {
             Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
           </p>
         </div>
-        <button
-          type="button"
-          className="counter"
+        <Button
+          label={`Count is ${count}`}
+          variant="contained"
           onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
+        />
       </section>
 
       <div className="ticks"></div>

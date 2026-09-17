@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radar-repo/radar-repo-lib": "*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

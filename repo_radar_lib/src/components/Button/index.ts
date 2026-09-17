@@ -1,2 +1,2 @@
 export * from './Button'
-export * from './theme/theme'
+export * from '../../theme/theme'

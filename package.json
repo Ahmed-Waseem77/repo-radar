@@ -1,5 +1,8 @@
 {
-  "dependencies": {
-    "@radar-repo/radar-repo-lib": "workspace:*"
-  }
+  "name": "radar-repo",
+  "private": true,
+  "workspaces": [
+    "repo_radar_app",
+    "repo_radar_lib"
+  ]
 }

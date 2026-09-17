@@ -1,5 +1,5 @@
 {
-  "name": "repo_radar_lib",
+  "name": "@radar-repo/radar-repo-lib",
   "private": true,
   "version": "0.0.0",
   "type": "module",

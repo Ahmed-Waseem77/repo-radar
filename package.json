@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@radar-repo/radar-repo-lib": "workspace:*"
+  }
+}

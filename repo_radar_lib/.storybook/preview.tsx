@@ -2,6 +2,9 @@ import type { Preview } from '@storybook/react-vite'
 import React from 'react'
 import { ThemeProvider, CssBaseline } from '@mui/material'
 import { theme } from '../src/theme/theme'
+import '@fontsource/roboto-condensed/400.css'
+import '@fontsource/staatliches/400.css'
+import '@fontsource/iosevka/400.css'
 
 const preview: Preview = {
   parameters: {

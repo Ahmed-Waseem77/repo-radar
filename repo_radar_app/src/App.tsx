@@ -1,48 +1,80 @@
 import { useState } from 'react'
-import { Box, Container, MenuItem, Select, Stack, Typography } from '@mui/material'
-import type { SelectChangeEvent } from '@mui/material'
-import { useColorScheme } from '@mui/material/styles'
-import { Button } from '@radar-repo/radar-repo-lib'
+import { Box, Container, Divider, Stack, Typography } from '@mui/material'
+import { AppBar, Button, ColorModeToggle, LogoIcon, NoSearchIcon, RepoOverviewTablePagination } from '@radar-repo/radar-repo-lib'
+import { useCtrlKFocus } from './hooks/useCtrlKFocus'
 
 function App() {
-  const [count, setCount] = useState(0)
-  const { mode, setMode } = useColorScheme()
-
-  const handleModeChange = (event: SelectChangeEvent) => {
-    setMode(event.target.value as 'light' | 'dark' | 'system')
-  }
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const searchRef = useCtrlKFocus<HTMLInputElement>()
 
   return (
-    <Container maxWidth="sm">
-      <Stack
-        spacing={3}
-        sx={{ alignItems: 'center', justifyContent: 'center', minHeight: '100svh', textAlign: 'center' }}
-      >
-        <Select
-          value={mode ?? 'system'}
-          onChange={handleModeChange}
-          size="small"
-          sx={{ alignSelf: 'flex-end' }}
-        >
-          <MenuItem value="light">Light</MenuItem>
-          <MenuItem value="dark">Dark</MenuItem>
-          <MenuItem value="system">System</MenuItem>
-        </Select>
-        <Box>
-          <Typography variant="h3" component="h1" gutterBottom>
-            Repo Radar
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Edit <code>src/App.tsx</code> to get started.
-          </Typography>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <AppBar
+        ref={searchRef}
+        searchValue={search}
+        onSearchChange={(event) => setSearch(event.target.value)}
+        start={
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <LogoIcon />
+            <Typography variant="h6">Repo Radar</Typography>
+          </Stack>
+        }
+        end={
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Button
+              variant="text"
+              size="medium"
+              label="Tracked Repos"
+              sx={(theme) => ({
+                color: 'text.primary',
+                fontWeight: 700,
+                position: 'relative',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  left: '50%',
+                  bottom: 6,
+                  width: 0,
+                  height: 2,
+                  borderRadius: 1,
+                  bgcolor: 'text.primary',
+                  transform: 'translateX(-50%)',
+                  transition: theme.transitions.create('width'),
+                },
+                '&:hover::after, &:focus-visible::after': {
+                  width: '70%',
+                },
+              })}
+            />
+            <ColorModeToggle />
+          </Stack>
+        }
+      />
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+          <Container maxWidth="md" sx={{ py: 2 }}>
+            <RepoOverviewTablePagination
+              repos={[]}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              onPageChange={(_event, newPage) => setPage(newPage)}
+              onRowsPerPageChange={(event) => {
+                setRowsPerPage(Number(event.target.value))
+                setPage(0)
+              }}
+              emptyStateImage={<NoSearchIcon sx={{ width: 200, height: 'auto' }} />}
+              emptyStateLabel="start searching for repos to track"
+            />
+          </Container>
         </Box>
-        <Button
-          label={`Count is ${count}`}
-          variant="contained"
-          onClick={() => setCount((count) => count + 1)}
-        />
-      </Stack>
-    </Container>
+        <Divider />
+        <Box sx={{ flex: 1, minHeight: 0 }}>
+          {/* TODO: next section */}
+        </Box>
+      </Box>
+    </Box>
   )
 }
 

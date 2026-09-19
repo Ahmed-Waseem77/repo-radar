@@ -1,0 +1,96 @@
+import { useRef, useState } from 'react'
+import { Box, SvgIcon } from '@mui/material'
+import type { BoxProps } from '@mui/material'
+import { Lottie } from 'lottie-react'
+import type { LottieHandle } from 'lottie-react'
+import repoRadarLogoAnimation from '../../assets/REPO_RADAR_LOGO_LOTTIE.json'
+
+// Traced from src/assets/REPO_RADAR_LOGO.svg for the resting state - see LogoIcon below for
+// why this exists separately from the Lottie animation.
+function StaticMark() {
+    return (
+        <SvgIcon viewBox="0 0 300 300" sx={{ width: '100%', height: '100%' }}>
+            <g transform="matrix(0.607805 0 0 0.607805 3.499216 62.841472)" clipPath="url(#repoRadarLogoClip)">
+                <g>
+                    <path
+                        d="M305.789,236.952C317.173,223.552,324,206.441,324,187.799C324,144.832,287.735,110,243,110s-81,34.832-81,77.799c0,18.755,6.91,35.961,18.418,49.396C200.416,243.997,221.123,248,242.09,248h1.365c21.216,0,42.147-4.099,62.334-11.048Z"
+                        transform="translate(-1.994692 5.31918)"
+                        clipRule="evenodd"
+                        fillRule="evenodd"
+                        fill="currentColor"
+                    />
+                    <path
+                        d="M212.49,0.436861l.556,75.023639c-1.97.2002-3.935.419-5.895.6558-2.105-14.8384-6.921-40.1209-19.16-70.76498L141.476,20.3617c11.269,28.216,15.725,51.4218,17.683,65.1314-2.335.6242-4.654,1.2681-6.956,1.9301-4.204-13.6109-11.989-34.8896-28.429-59.3061L82.0906,53.765c13.538,20.1053,20.3164,37.2216,24.3914,49.798-2.642,1.105-5.244,2.224-7.8036,3.354C90.0446,95.3343,77.325,79.5384,64.3995,66.7136L34.7167,96.6138c9.0915,9.0202,18.3609,20.1282,25.628,29.4972-2.2647,1.279-4.4628,2.549-6.5913,3.805-2.3763-1.84-4.8959-3.674-7.4187-5.451-5.5409-3.902-11.8759-8.064-17.6616-11.866-1.8743-1.231-3.6909-2.425-5.4043-3.56l-23.26881,35.12c1.99739,1.322,3.99402,2.635,5.97238,3.935v0v0v0c4.01665,2.64,7.96233,5.233,11.68263,7.762l5.9705,5.537l2.7584,3.547.2399.308.1633.21l1.8957,2.4c20.0463,25.112,54.2805,59.902,96.0412,86.397c18.383,11.663,38.41,21.837,59.494,28.83C202.864,289.27,222.442,293,242.481,293h1.197c20.277,0,40.066-3.82,58.888-10.138c21.058-7.069,41.039-17.309,59.363-29.023c42.713-27.304,77.428-63.26,97.048-88.384l3.296-4.221l6.803-6.349-.627-.451c3.089-2.075,6.306-4.189,9.572-6.336l.035-.022.109-.073c1.933-1.27,3.884-2.552,5.835-3.844l-23.269-35.12c-1.713,1.135-3.53,2.329-5.404,3.56-5.786,3.802-12.121,7.964-17.662,11.866-2.247,1.583-4.492,3.211-6.635,4.848-2.201-1.293-4.476-2.601-6.819-3.917c7.181-9.215,16.211-19.99,25.072-28.7822L419.601,66.7136c-12.69,12.5906-25.181,28.0448-33.802,39.5644-2.64-1.156-5.323-2.301-8.048-3.431c4.1-12.5063,10.875-29.3554,24.158-49.082L360.226,28.1171c-16.225,24.0963-24.02,45.1364-28.261,58.7666-2.333-.6593-4.682-1.2996-7.048-1.9194c1.996-13.7731,6.482-36.7462,17.607-64.6026L296.009,5.35132C283.837,35.8256,279.007,60.9976,276.884,75.8687c-1.611-.1838-3.226-.3554-4.845-.5143L271.481,0l-58.991.436861ZM242.481,237.603c-38.283,0-77.932-13.999-113.063-32.753-26.482-14.136-49.7926-30.65-67.2022-44.928c41.2092-18.736,111.8472-43.07,180.2652-43.07h.798c68.417,0,139.055,24.334,180.264,43.07-17.41,14.278-40.72,30.793-67.201,44.928-35.131,18.754-74.78,32.753-113.063,32.753h-.798Z"
+                        transform="translate(-0.664896 0.680125)"
+                        fill="currentColor"
+                    />
+                </g>
+            </g>
+            <defs>
+                <clipPath id="repoRadarLogoClip">
+                    <rect width="484" height="293" fill="white" />
+                </clipPath>
+            </defs>
+        </SvgIcon>
+    )
+}
+
+export interface LogoIconProps extends BoxProps {}
+
+// Resting state is the hand-traced static mark above. On hover it cross-fades into the
+// original SVGator animation (src/assets/REPO_RADAR_LOGO_LOTTIE.json), played once via
+// lottie-react, then settles back to static. The Lottie file's shapes are baked as solid
+// black fills - `& path { fill: currentColor }` overrides that with a plain CSS rule, which
+// always outranks an SVG presentation attribute, so the animated mark still recolors per theme.
+export function LogoIcon({ sx, ...props }: LogoIconProps) {
+    const [isHovering, setIsHovering] = useState(false)
+    const lottieRef = useRef<LottieHandle>(null)
+
+    return (
+        <Box
+            onMouseEnter={() => {
+                setIsHovering(true)
+                lottieRef.current?.play()
+            }}
+            onMouseLeave={() => {
+                setIsHovering(false)
+                lottieRef.current?.stop()
+            }}
+            {...props}
+            sx={[
+                { position: 'relative', width: 32, height: 32, display: 'inline-block', flexShrink: 0 },
+                ...(Array.isArray(sx) ? sx : [sx]),
+            ]}
+        >
+            <Box
+                sx={(theme) => ({
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: isHovering ? 0 : 1,
+                    transition: theme.transitions.create('opacity'),
+                })}
+            >
+                <StaticMark />
+            </Box>
+            <Box
+                sx={(theme) => ({
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: isHovering ? 1 : 0,
+                    transition: theme.transitions.create('opacity'),
+                    pointerEvents: 'none',
+                    '& path': { fill: 'currentColor' },
+                })}
+            >
+                <Lottie
+                    src={repoRadarLogoAnimation}
+                    loop={false}
+                    autoplay={false}
+                    lottieRef={lottieRef}
+                    subscriptions={{ complete: () => setIsHovering(false) }}
+                    style={{ width: '100%', height: '100%' }}
+                />
+            </Box>
+        </Box>
+    )
+}

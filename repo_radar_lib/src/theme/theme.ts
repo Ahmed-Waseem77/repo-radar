@@ -7,6 +7,12 @@ declare module '@mui/material/styles' {
   interface CssThemeVariables {
     enabled: true
   }
+  // custom `text.dimmed` palette entry - MUI's Typography auto-generates a `color="textDimmed"`
+  // variant for any string key under theme.palette.text, but TypeText itself is a closed
+  // interface, so without this the literal below fails an excess-property check.
+  interface TypeText {
+    dimmed: string
+  }
 }
 
 const headingFontFamily = '"Staatliches", "Roboto Condensed", "Helvetica", "Arial", sans-serif'
@@ -78,6 +84,7 @@ export const theme = createTheme({
         text: {
           primary: '#0C100C',
           secondary: '#3C473A',
+          dimmed: '#B3C4B3',
         },
         divider: '#CCDACC',
       },
@@ -92,6 +99,7 @@ export const theme = createTheme({
         text: {
           primary: '#EAEDEA',
           secondary: '#CCDACC',
+          dimmed: '#293427',
         },
         divider: '#293427',
       },

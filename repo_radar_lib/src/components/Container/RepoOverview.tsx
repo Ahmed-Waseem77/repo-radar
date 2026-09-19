@@ -135,6 +135,7 @@ export default function RepoOverview({onTrack, onDetailedView, loading, ...props
                     variant="contained"
                     color={props.tracked ? 'secondary' : 'primary'}
                     size='small'
+                    sx={{ width: 20 }}
                 />
             </Stack>
             <Stack direction='column' spacing={1} sx={{ flex: '100 0 0%' }}>

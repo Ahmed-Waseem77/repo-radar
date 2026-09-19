@@ -24,8 +24,23 @@ export default defineConfig({
       fileName: format => `index.${format === 'es' ? 'mjs' : 'cjs'}`
     },
     rollupOptions: {
-      // don't bundle react/mui into your library — the consuming app provides them
-      external: ['react', 'react/jsx-runtime', 'react/jsx-dev-runtime', 'react-dom', '@mui/material', '@emotion/react', '@emotion/styled'],
+      // don't bundle react/mui into your library — the consuming app provides them.
+      // '@mui/material/styles' (createTheme, styled, alpha, useColorScheme, ...) is a
+      // separate import specifier from '@mui/material' and must be listed explicitly -
+      // otherwise Rollup inlines its own copy instead of treating it as external, which
+      // creates a second, disconnected instance of MUI's ColorSchemeContext: useColorScheme()
+      // called from within the library then reads/writes state nothing else observes.
+      external: [
+        'react',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+        'react-dom',
+        '@mui/material',
+        '@mui/material/styles',
+        '@mui/material/colors',
+        '@emotion/react',
+        '@emotion/styled',
+      ],
       output: {
         globals: {
           react: 'React',

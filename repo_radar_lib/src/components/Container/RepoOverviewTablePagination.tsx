@@ -1,0 +1,61 @@
+import type { ChangeEvent, MouseEvent, ReactNode } from 'react'
+import { Stack, Divider, Typography, TablePagination } from '@mui/material'
+import RepoOverview, { type RepoOverviewProps } from './RepoOverview'
+
+export interface RepoOverviewTablePaginationProps {
+    // the full data set - always sliced client-side by page/rowsPerPage, so pass every
+    // row here rather than just the current page's worth
+    repos: RepoOverviewProps[]
+    page: number
+    rowsPerPage: number
+    rowsPerPageOptions?: number[]
+    // mirrors MUI TablePagination's own onPageChange/onRowsPerPageChange signatures -
+    // this component is controlled, the caller owns page/rowsPerPage state
+    onPageChange: (event: MouseEvent<HTMLButtonElement> | null, page: number) => void
+    onRowsPerPageChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void
+    // shown in place of the row list + pagination footer when `repos` is empty
+    emptyStateImage?: ReactNode
+    emptyStateLabel?: string
+}
+
+export default function RepoOverviewTablePagination({
+    repos,
+    page,
+    rowsPerPage,
+    rowsPerPageOptions = [5, 10, 25],
+    onPageChange,
+    onRowsPerPageChange,
+    emptyStateImage,
+    emptyStateLabel,
+}: RepoOverviewTablePaginationProps) {
+    if (repos.length === 0) {
+        return (
+            <Stack direction="column" spacing={2} sx={{ alignItems: 'center', justifyContent: 'center', py: 6 }}>
+                {emptyStateImage}
+                {emptyStateLabel && <Typography color="textDimmed">{emptyStateLabel}</Typography>}
+            </Stack>
+        )
+    }
+
+    const start = page * rowsPerPage
+    const visibleRepos = repos.slice(start, start + rowsPerPage)
+
+    return (
+        <Stack direction="column">
+            <Stack direction="column" divider={<Divider />}>
+                {visibleRepos.map((repo) => (
+                    <RepoOverview key={repo.title} {...repo} />
+                ))}
+            </Stack>
+            <TablePagination
+                component="div"
+                count={repos.length}
+                page={page}
+                rowsPerPage={rowsPerPage}
+                rowsPerPageOptions={rowsPerPageOptions}
+                onPageChange={onPageChange}
+                onRowsPerPageChange={onRowsPerPageChange}
+            />
+        </Stack>
+    )
+}

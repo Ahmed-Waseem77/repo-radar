@@ -1,3 +1,6 @@
+export * from './components/AppBar'
 export * from './components/Button'
+export * from './components/Container'
+export * from './components/Icons'
 export * from './components/Text'
 export * from './types'

@@ -65,9 +65,10 @@ npm run build -w repo_radar_lib && npm run build -w repo_radar_app
 
 GenAI was used so far to aid in the following:
 - Scaffolding Stories/Story Prop Data for Components
-- Making of Simple Components such as `Pill.tsx`
-- Debugging
+- Making of Simple Components such as `Pill.tsx` or `Button.tsx`
 - Moving code around/refactoring maintaining original code essence
+- Wrapping SVG assets in SVG Components under `radar_repo_lib/src/components/Icons/`
+- Debugging
 
 Any AI output was reviewed beforehand
 

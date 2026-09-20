@@ -1,4 +1,4 @@
-import type { ChangeEvent, FormEvent, Ref } from 'react'
+import type { ChangeEvent, FormEvent, KeyboardEvent, Ref } from 'react'
 import { Paper, InputBase, Stack } from '@mui/material'
 import type { PaperProps } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
@@ -47,13 +47,17 @@ export function SearchField({
                     // theme.shape.borderRadius (like spacing), not a literal px value - an explicit
                     // unit is needed to use the theme's radius as-is instead of radius * radius.
                     borderRadius: `${theme.shape.borderRadius}px`,
-                    transition: theme.transitions.create('border-color'),
+                    transition: theme.transitions.create(['border-color', 'max-width']),
                     // the <input> is what actually receives focus, not this Paper/form itself -
                     // :focus-within reacts to a focused descendant instead. `text.primary` is the
                     // theme's own dark/light swap (near-black in light mode, near-white in dark),
-                    // so this stays theme-aware without a manual light/dark branch.
+                    // so this stays theme-aware without a manual light/dark branch. A modest,
+                    // fixed max-width bump (not 100%) reads as "growing to make room for typing"
+                    // rather than lunging to fill the whole bar - the caller's own sx (e.g.
+                    // AppBar's maxWidth: 480) still governs the resting width it shrinks back to.
                     '&:focus-within': {
                         borderColor: 'text.primary',
+                        maxWidth: 560,
                     },
                 }),
                 ...(Array.isArray(sx) ? sx : [sx]),
@@ -64,6 +68,11 @@ export function SearchField({
                 inputRef={ref}
                 value={value}
                 onChange={onChange}
+                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                    if (event.key === 'Escape') {
+                        event.currentTarget.blur()
+                    }
+                }}
                 placeholder={placeholder}
                 sx={{ flex: 1, fontSize: 'body2.fontSize' }}
                 inputProps={{ 'aria-label': placeholder }}

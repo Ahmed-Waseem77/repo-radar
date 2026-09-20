@@ -6,6 +6,7 @@ const meta: Meta<typeof LanguageDistributionBar> = {
   component: LanguageDistributionBar,
   argTypes: {
     height: { control: 'select', options: ['sm', 'md', 'lg'] },
+    labelLayout: { control: 'select', options: ['aligned', 'inline'] },
   },
 }
 export default meta
@@ -70,5 +71,43 @@ export const NarrowContainer: Story = {
     languages: ['TypeScript', 'JavaScript', 'CSS', 'HTML', 'Go'],
     distribution: [82, 45, 12, 8, 6],
     height: 'md',
+  },
+}
+
+// caps the bar's own rendered width regardless of how wide the parent is
+export const MaxWidth: Story = {
+  args: {
+    languages: ['TypeScript', 'JavaScript', 'CSS', 'HTML', 'Go'],
+    distribution: [82, 45, 12, 8, 6],
+    height: 'md',
+    maxWidth: 240,
+  },
+}
+
+// many languages, each with a small enough share to otherwise collide on color -
+// demonstrates both the languageCutoff prop (top 5 only, renormalized to 100%) and
+// the curated color palette staying distinct across the shown segments
+export const ManyLanguagesWithCutoff: Story = {
+  args: {
+    languages: ['TypeScript', 'JavaScript', 'CSS', 'HTML', 'Go', 'Rust', 'Python', 'Shell', 'Dockerfile', 'Makefile'],
+    distribution: [420, 210, 90, 60, 55, 40, 30, 20, 12, 8],
+    height: 'md',
+    languageCutoff: 5,
+  },
+}
+
+// 'inline' labelLayout: one single noWrap line instead of per-segment aligned
+// captions - reads better once segments get too narrow to fit their own label under
+export const InlineLabels: Story = {
+  render: (args) => (
+    <div style={{ width: 260, border: '1px dashed gray', padding: 8 }}>
+      <LanguageDistributionBar {...args} />
+    </div>
+  ),
+  args: {
+    languages: ['TypeScript', 'JavaScript', 'CSS', 'HTML', 'Go'],
+    distribution: [82, 45, 12, 8, 6],
+    height: 'md',
+    labelLayout: 'inline',
   },
 }

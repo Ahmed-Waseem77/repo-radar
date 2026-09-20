@@ -19,6 +19,8 @@ export interface RepoOverviewDto {
     starCount: number,
     languageInfo: LanguageInfo,
     topics: string[],
+    // license name/SPDX id - null/undefined renders an "Unlicensed" pill
+    license?: string | null,
     onTrack: (event: React.MouseEvent<HTMLButtonElement>) => void,
     onDetailedView: (event: React.SyntheticEvent<HTMLElement>) => void,
     archived: boolean,

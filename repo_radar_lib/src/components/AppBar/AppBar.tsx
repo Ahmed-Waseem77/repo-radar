@@ -53,9 +53,30 @@ export function AppBar({
                 transition: theme.transitions.create(['background-color', 'box-shadow']),
             })}
         >
-            <Toolbar sx={{ gap: 2 }}>
-                {start && <Stack direction="row" sx={{ alignItems: 'center', flexShrink: 0 }}>{start}</Stack>}
-                <Stack direction="row" sx={{ flex: 1, justifyContent: 'center' }}>
+            {/* a flex middle child only centers WITHIN the leftover space between start/end -
+                if they're different widths (e.g. logo+title vs. buttons), that leftover space
+                isn't symmetric around the bar's true center, so the search field drifts off it.
+                A grid with two equal 1fr outer tracks keeps the middle column's center pinned to
+                the bar's actual center regardless of how wide start/end each are. */}
+            <Toolbar
+                sx={{
+                    display: 'grid',
+                    // the middle column is a concrete size (not `auto`) rather than one sized to
+                    // its content: SearchField's width:'100%' is a percentage, and a percentage
+                    // against a content-sized (`auto`) track is circular/indeterminate, which
+                    // silently breaks its focus-triggered max-width growth. 560 matches
+                    // SearchField's own focused max-width, so the column always has enough room
+                    // reserved for the expanded state - the field's own maxWidth transition (480
+                    // resting -> 560 focused) does the actual animating within that fixed space.
+                    gridTemplateColumns: 'minmax(min-content, 1fr) minmax(0, 560px) minmax(min-content, 1fr)',
+                    alignItems: 'center',
+                    gap: 2,
+                }}
+            >
+                <Stack direction="row" sx={{ gridColumn: '1', alignItems: 'center', minWidth: 0 }}>
+                    {start}
+                </Stack>
+                <Stack direction="row" sx={{ gridColumn: '2', justifyContent: 'center' }}>
                     <SearchField
                         ref={ref}
                         value={searchValue}
@@ -65,7 +86,9 @@ export function AppBar({
                         sx={{ width: '100%', maxWidth: 480 }}
                     />
                 </Stack>
-                {end && <Stack direction="row" sx={{ alignItems: 'center', flexShrink: 0 }}>{end}</Stack>}
+                <Stack direction="row" sx={{ gridColumn: '3', alignItems: 'center', minWidth: 0, justifyContent: 'flex-end' }}>
+                    {end}
+                </Stack>
             </Toolbar>
         </MuiAppBar>
     )

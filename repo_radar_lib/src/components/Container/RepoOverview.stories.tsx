@@ -29,6 +29,7 @@ export const Default: Story = {
       distribution: [82, 12, 6],
     },
     topics: ['dashboard', 'github', 'analytics'],
+    license: 'MIT',
     onTrack: fn(),
     onDetailedView: fn(),
     archived: false,
@@ -51,6 +52,32 @@ export const Archived: Story = {
     title: 'repo-radar-legacy',
     archived: true,
     archivalDate: '2025-01-10',
+  },
+}
+
+export const Unlicensed: Story = {
+  args: {
+    ...Default.args,
+    title: 'repo-radar-scratch',
+    license: null,
+  },
+}
+
+// confirms the pill row wraps onto its own line(s) instead of overflowing/squeezing
+// once the component is too narrow to fit every pill on one row
+export const NarrowContainer: Story = {
+  render: (args) => (
+    <div style={{ width: 320, border: '1px dashed gray' }}>
+      <RepoOverview {...args} />
+    </div>
+  ),
+  args: {
+    ...Default.args,
+    title: 'repo-radar-narrow',
+    archived: true,
+    archivalDate: '2025-01-10',
+    starCount: 128000,
+    license: 'Apache-2.0',
   },
 }
 

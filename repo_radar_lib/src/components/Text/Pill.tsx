@@ -82,13 +82,32 @@ export const Pill = ({
             {...props}
             sx={[
                 (theme) => {
-                    // the color family this pill is drawn from, used for both the solid fill and the tonal tint/border
-                    const hue = color ?? (isColorVariant(variant) ? theme.palette[variant].main : theme.palette.text.primary)
+                    // whether this pill has a real semantic color to draw a tonal treatment from -
+                    // the neutral 'default' variant doesn't, so it draws its base solid
+                    // background/text from its own dedicated theme.palette.pillDefault pair
+                    // instead of approximating one from `action`/`text` tokens meant for other
+                    // purposes (see theme.ts).
+                    const hasHue = color !== undefined || isColorVariant(variant)
+                    const hue = color ?? (isColorVariant(variant) ? theme.palette[variant].main : theme.palette.pillDefault.text)
 
                     const tonalStyles = {
                         backgroundColor: alpha(hue, 0.16),
                         color: hue,
                         borderColor: alpha(hue, 0.5),
+                    }
+
+                    // `hue` above is baked to whichever scheme `theme.palette` was resolved from
+                    // (this theme's default/light scheme) - that's a non-issue for semantic hues
+                    // since primary/secondary/etc. are identical in both schemes here, but
+                    // pillDefault.text genuinely differs per scheme, so the dark-mode tonal fill
+                    // needs the DARK scheme's own value pulled explicitly, the same way
+                    // RepoOverview's inverted "Latest Commit" color does. `alpha()` also needs an
+                    // actual parseable color, not a `theme.vars` CSS-variable reference string.
+                    const defaultDarkHue = theme.colorSchemes?.dark?.palette?.pillDefault?.text ?? '#EAEDEA'
+                    const defaultDarkTonalStyles = {
+                        backgroundColor: alpha(defaultDarkHue, 0.16),
+                        color: defaultDarkHue,
+                        borderColor: alpha(defaultDarkHue, 0.5),
                     }
 
                     return {
@@ -108,15 +127,17 @@ export const Pill = ({
                         whiteSpace: 'nowrap',
                         boxSizing: 'border-box',
                         ...sizeStyles(theme, size),
-                        backgroundColor: color ?? (isColorVariant(variant) ? theme.palette[variant].main : theme.palette.action.selected),
+                        backgroundColor: color ?? (isColorVariant(variant) ? theme.palette[variant].main : theme.palette.pillDefault.background),
                         color: color
                             ? theme.palette.getContrastText(color)
                             : isColorVariant(variant)
                               ? theme.palette[variant].contrastText
-                              : theme.palette.text.primary,
+                              : theme.palette.pillDefault.text,
                         ...(appearance === 'tonal' && tonalStyles),
-                        // no explicit appearance given: fall back to tonal automatically in dark themes
-                        ...(appearance === undefined && theme.applyStyles('dark', tonalStyles)),
+                        // no explicit appearance given: fall back to tonal automatically in dark
+                        // themes, for every variant including 'default' (using its own
+                        // dark-scheme-correct hue computed above).
+                        ...(appearance === undefined && theme.applyStyles('dark', hasHue ? tonalStyles : defaultDarkTonalStyles)),
                         '& .Pill-icon': {
                             display: 'inline-flex',
                             fontSize: theme.typography.pxToRem(iconSizePx[resolvedIconSize]),

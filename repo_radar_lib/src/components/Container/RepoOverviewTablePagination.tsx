@@ -3,8 +3,10 @@ import { Stack, Divider, Typography, TablePagination } from '@mui/material'
 import RepoOverview, { type RepoOverviewProps } from './RepoOverview'
 
 export interface RepoOverviewTablePaginationProps {
-    // the full data set - always sliced client-side by page/rowsPerPage, so pass every
-    // row here rather than just the current page's worth
+    // the data to render for the current page. By default (no `count` given) this is treated
+    // as the FULL data set and sliced client-side by page/rowsPerPage. When `count` is given,
+    // `repos` is assumed to already be just the current page's rows (e.g. fetched server-side
+    // one page at a time) and is rendered as-is instead.
     repos: RepoOverviewProps[]
     page: number
     rowsPerPage: number
@@ -16,6 +18,9 @@ export interface RepoOverviewTablePaginationProps {
     // shown in place of the row list + pagination footer when `repos` is empty
     emptyStateImage?: ReactNode
     emptyStateLabel?: string
+    // total row count across ALL pages, not just this one - passing this switches the
+    // component into server-paginated mode (see `repos` above)
+    count?: number
 }
 
 export default function RepoOverviewTablePagination({
@@ -27,7 +32,10 @@ export default function RepoOverviewTablePagination({
     onRowsPerPageChange,
     emptyStateImage,
     emptyStateLabel,
+    count,
 }: RepoOverviewTablePaginationProps) {
+    const serverPaginated = count !== undefined
+
     if (repos.length === 0) {
         return (
             <Stack direction="column" spacing={2} sx={{ alignItems: 'center', justifyContent: 'center', py: 6 }}>
@@ -38,7 +46,7 @@ export default function RepoOverviewTablePagination({
     }
 
     const start = page * rowsPerPage
-    const visibleRepos = repos.slice(start, start + rowsPerPage)
+    const visibleRepos = serverPaginated ? repos : repos.slice(start, start + rowsPerPage)
 
     return (
         <Stack direction="column">
@@ -49,7 +57,7 @@ export default function RepoOverviewTablePagination({
             </Stack>
             <TablePagination
                 component="div"
-                count={repos.length}
+                count={serverPaginated ? count : repos.length}
                 page={page}
                 rowsPerPage={rowsPerPage}
                 rowsPerPageOptions={rowsPerPageOptions}

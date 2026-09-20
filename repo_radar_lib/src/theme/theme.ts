@@ -13,6 +13,15 @@ declare module '@mui/material/styles' {
   interface TypeText {
     dimmed: string
   }
+  // Pill's neutral 'default' variant has no semantic color (primary/warning/etc.) to draw a
+  // background/text pair from, so it gets its own deliberately-chosen, theme-aware pair here
+  // instead of approximating one from `action`/`text` tokens meant for other purposes.
+  interface Palette {
+    pillDefault: { background: string; text: string }
+  }
+  interface PaletteOptions {
+    pillDefault?: { background: string; text: string }
+  }
 }
 
 const headingFontFamily = '"Staatliches", "Roboto Condensed", "Helvetica", "Arial", sans-serif'
@@ -87,6 +96,10 @@ export const theme = createTheme({
           dimmed: '#B3C4B3',
         },
         divider: '#CCDACC',
+        pillDefault: {
+          background: '#CCDACC',
+          text: '#0C100C',
+        },
       },
     },
     dark: {
@@ -102,6 +115,10 @@ export const theme = createTheme({
           dimmed: '#293427',
         },
         divider: '#293427',
+        pillDefault: {
+          background: '#293427',
+          text: '#EAEDEA',
+        },
       },
     },
   },

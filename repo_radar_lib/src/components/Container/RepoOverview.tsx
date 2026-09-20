@@ -1,12 +1,12 @@
-import { Stack, Skeleton, Typography, Avatar } from '@mui/material'
+import { Stack, Skeleton, Typography } from '@mui/material'
 import { Button } from '../Button/Button'
 import { Pill } from '../Text/Pill'
 import InlineCode from '../Text/InlineCode'
 import StarSharpIcon from '@mui/icons-material/StarSharp'
+import GavelSharpIcon from '@mui/icons-material/GavelSharp'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import type { RepoOverviewDto } from '../../types'
 import LanguageDistributionBar from './LanguageDistributionBar'
-import { themedRandomColor } from '../../util'
 
 export interface RepoOverviewProps extends RepoOverviewDto {
     loading: boolean,
@@ -21,32 +21,31 @@ export default function RepoOverview({onTrack, onDetailedView, loading, ...props
                 <Stack direction="row" sx={{
                     justifyContent:"space-between",
                     alignItems:"center",
+                    flexWrap: 'wrap',
+                    rowGap: 1,
                 }}>
                     <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                        <Skeleton variant="circular" width={40} height={40} />
                         <Skeleton variant="text" width={160} sx={{ fontSize: '1.5rem' }} />
                     </Stack>
-                    <Stack direction="row" spacing={2}>
-                        <Skeleton variant="rounded" width={120} height={28} />
+                    <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                        <Skeleton variant="rounded" width={90} height={28} />
+                        <Skeleton variant="rounded" width={70} height={28} />
                     </Stack>
                 </Stack>
                 <Stack
-                    spacing={5}
                     direction="row"
+                    sx={{ minWidth: 50, flexWrap: 'wrap', columnGap: 5, rowGap: 1 }}
                 >
-                    <Stack spacing={2} direction="column" sx={{ flex:'100 0 0%', justifyContent:'space-between', maxWidth: 'sm', minWidth: 0 }}>
-                    <Stack>
+                    <Stack spacing={1} sx={{ flex:'100 0 0%', maxWidth: 'sm', minWidth: 0 }}>
                         <Skeleton variant="text" width="100%" />
                         <Skeleton variant="text" width="100%" />
-                    </Stack>
-                        <Skeleton variant="rounded" width='100%' height={32} />
                     </Stack>
                     <Stack direction='column' spacing={1} sx={{ flex: '100 0 0%' }}>
                         <Skeleton variant="rounded" height={20} sx={{ width: '100%' }} />
                         <Skeleton variant="text" width="100%" />
-                        <Skeleton variant="rounded" width="100%" height={60} />
                     </Stack>
                 </Stack>
+                <Skeleton variant="rounded" width={80} height={32} />
             </Stack>
        )
     }
@@ -85,21 +84,11 @@ export default function RepoOverview({onTrack, onDetailedView, loading, ...props
         >
             <Stack direction="row" sx={{
                 justifyContent:"space-between",
-                alignItems:"center"
+                alignItems:"center",
+                flexWrap: 'wrap',
+                rowGap: 1,
             }}>
                 <Stack direction="row" sx={{ minWidth: 0, alignItems: 'center' }} spacing={2}>
-                <Avatar
-                    sx={[
-                        (theme) => {
-                            const { light, dark } = themedRandomColor(theme, props.title)
-                            return {
-                                fontWeight: 600,
-                                bgcolor: light,
-                                ...theme.applyStyles('dark', { bgcolor: dark }),
-                            }
-                        },
-                    ]}
-                >{props.title[0].toUpperCase()}</Avatar>
                 <Typography noWrap variant='h5'>{props.title}</Typography>
                     <ChevronRightIcon
                         className="repo-overview-chevron"
@@ -111,21 +100,62 @@ export default function RepoOverview({onTrack, onDetailedView, loading, ...props
                         })}
                     />
                 </Stack>
-                <Stack direction="row" sx={{ minWidth: 0}}spacing={2}>
-                    {props.archived ?
-                        <Pill size='large' shape='rounded' variant='warning' iconSize='large' label={'archived on ' + props.archivalDate} />
-                        :''}
-                        <Pill size='large' shape='rounded' variant='secondary' iconSize='large' startIcon={<StarSharpIcon />} label={String(props.starCount)} />
+                <Stack direction="row" sx={{ minWidth: 0, flexWrap: 'wrap', gap: 1 }}>
+                    {props.archived &&
+                        <Pill
+                            size='large'
+                            shape='rounded'
+                            variant='warning'
+                            iconSize='large'
+                            label={props.archivalDate ? `archived on ${props.archivalDate}` : 'archived'}
+                        />
+                    }
+                    {props.license &&
+                        <Pill
+                            size='large'
+                            shape='rounded'
+                            variant='default'
+                            iconSize='large'
+                            startIcon={<GavelSharpIcon />}
+                            label={props.license}
+                        />
+                    }
+                    <Pill size='large' shape='rounded' variant='secondary' iconSize='large' startIcon={<StarSharpIcon />} label={String(props.starCount)} />
                 </Stack>
             </Stack>
             <Stack direction="row" spacing={2}>
             </Stack>
             <Stack
-                spacing={5}
-                direction="row"
+        direction="row"
+        sx={{
+            minWidth:50, flexWrap: 'wrap', columnGap: 5, rowGap: 1
+        }}
             >
-            <Stack spacing={2} direction="column" sx={{ flex:'100 0 0%', justifyContent:'space-between', maxWidth: 'sm', minWidth: 0 }}>
-                <Typography>{props.description}</Typography>
+            <Typography>{props.description}</Typography>
+            <Stack direction='column' spacing={1} sx={{ flex: '100 0 0%' }}>
+                <LanguageDistributionBar
+                    languages={props.languageInfo.languages}
+                    distribution={props.languageInfo.distribution}
+                    height='sm'
+                />
+            <Typography
+                noWrap
+                variant='caption'
+                sx={(theme) => ({
+                    // deliberately inverted from the scheme-matched text.dimmed token: light mode
+                    // shows dark mode's dimmed value and vice versa - text.dimmed itself is left
+                    // untouched since other components (e.g. the empty-state label) rely on it
+                    // resolving to the current scheme's own value.
+                    color: theme.colorSchemes?.dark?.palette?.text?.dimmed ?? '#293427',
+                    ...theme.applyStyles('dark', {
+                        color: theme.colorSchemes?.light?.palette?.text?.dimmed ?? '#B3C4B3',
+                    }),
+                })}
+            >
+                Latest Commit: <InlineCode color='secondary'>{props.lastCommit.hash}</InlineCode> by {props.lastCommit.developerName} on {props.lastCommit.date}
+            </Typography>
+            </Stack>
+            </Stack>
                 <Button
                     label={props.tracked ? 'Untrack' : 'Track'}
                     onClick={(event) => {
@@ -137,17 +167,6 @@ export default function RepoOverview({onTrack, onDetailedView, loading, ...props
                     size='small'
                     sx={{ width: 20 }}
                 />
-            </Stack>
-            <Stack direction='column' spacing={1} sx={{ flex: '100 0 0%' }}>
-                <LanguageDistributionBar
-                    languages={props.languageInfo.languages}
-                    distribution={props.languageInfo.distribution}
-                    height='sm'
-                />
-            <Typography sx={{ fontSize: 'medium' }}> Latest Commit: <InlineCode color='secondary'> {props.lastCommit.hash} </InlineCode></Typography>
-            <Typography noWrap> by {props.lastCommit.developerName} on {props.lastCommit.date} </Typography>
-            </Stack>
-            </Stack>
         </Stack>
     )
 }

@@ -1,0 +1,64 @@
+// Raw GitHub REST API response shapes - kept close to what the API actually returns (only the
+// fields we read), separate from our own RepoOverviewDto so a schema change on GitHub's side
+// doesn't ripple into the UI layer directly. See mappers.ts for the translation between the two.
+
+export interface GithubOwner {
+    login: string
+    id: number
+    avatar_url: string
+    html_url: string
+    type: string
+}
+
+export interface GithubLicense {
+    key: string
+    name: string
+    spdx_id: string | null
+    url: string | null
+}
+
+// shared by GET /repos/{owner}/{repo} and each item of GET /search/repositories
+export interface GithubRepo {
+    id: number
+    name: string
+    full_name: string
+    owner: GithubOwner
+    description: string | null
+    html_url: string
+    homepage: string | null
+    language: string | null
+    stargazers_count: number
+    forks_count: number
+    open_issues_count: number
+    topics?: string[]
+    archived: boolean
+    pushed_at: string
+    updated_at: string
+    created_at: string
+    default_branch: string
+    license: GithubLicense | null
+}
+
+export interface GithubSearchReposResponse {
+    total_count: number
+    incomplete_results: boolean
+    items: GithubRepo[]
+}
+
+// GET /repos/{owner}/{repo}/commits?per_page=1 - only the fields we actually read
+export interface GithubCommit {
+    sha: string
+    commit: {
+        message: string
+        author: {
+            name: string
+            date: string
+        } | null
+    }
+    author: {
+        login: string
+    } | null
+}
+
+// GET /repos/{owner}/{repo}/languages - language name -> bytes of code written in it
+export type GithubLanguages = Record<string, number>

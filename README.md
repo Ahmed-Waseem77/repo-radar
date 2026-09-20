@@ -11,7 +11,8 @@ cd repo_radar
 # Local Development
 
 >[!IMPORTANT]
-> You need `$GITHUB_TOKEN` defined in an `.env`
+> You need `$VITE_GITHUB_TOKEN` defined in an `.env` in `radar_repo_app`, for a more usable experience with less rate limits
+> Configure a *READ ONLY* Pat token as VITE will bundle it with the app
 > you can do `set -a && source .env && set +a` for a key value pair env file
 
 Install Dependencies:

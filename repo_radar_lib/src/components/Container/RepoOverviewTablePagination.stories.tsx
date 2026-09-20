@@ -19,6 +19,7 @@ const makeRepo = (overrides: Partial<RepoOverviewProps>): RepoOverviewProps => (
         distribution: [82, 12, 6],
     },
     topics: ['dashboard', 'github', 'analytics'],
+    license: 'MIT',
     onTrack: fn(),
     onDetailedView: fn(),
     archived: false,

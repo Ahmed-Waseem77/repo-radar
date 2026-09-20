@@ -7,11 +7,16 @@ import { NoSearchIcon } from '../Icons'
 
 const makeRepo = (overrides: Partial<RepoOverviewProps>): RepoOverviewProps => ({
     title: 'repo-radar',
+    owner: 'ahmedwaseem',
+    url: `https://github.com/ahmedwaseem/${overrides.title ?? 'repo-radar'}`,
+    ownerUrl: 'https://github.com/ahmedwaseem',
     description: 'A dashboard for tracking repository health and activity.',
     lastCommit: {
         hash: 'a1b2c3d',
         date: '2026-09-17',
         developerName: 'Ahmed Waseem',
+        url: `https://github.com/ahmedwaseem/${overrides.title ?? 'repo-radar'}/commit/a1b2c3d`,
+        authorUrl: 'https://github.com/ahmedwaseem',
     },
     starCount: 1280,
     languageInfo: {

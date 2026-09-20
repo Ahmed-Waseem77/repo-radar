@@ -1,7 +1,7 @@
 import type { ChangeEvent, FormEvent, KeyboardEvent, Ref } from 'react'
 import { Paper, InputBase, Stack } from '@mui/material'
 import type { PaperProps } from '@mui/material'
-import SearchIcon from '@mui/icons-material/Search'
+import SearchTwoToneIcon from '@mui/icons-material/SearchTwoTone'
 import InlineCode from '../Text/InlineCode'
 
 export interface SearchFieldProps extends Omit<PaperProps, 'onChange'> {
@@ -63,7 +63,7 @@ export function SearchField({
                 ...(Array.isArray(sx) ? sx : [sx]),
             ]}
         >
-            <SearchIcon sx={{ color: 'text.secondary' }} fontSize="small" />
+            <SearchTwoToneIcon sx={{ color: 'text.secondary' }} fontSize="small" />
             <InputBase
                 inputRef={ref}
                 value={value}

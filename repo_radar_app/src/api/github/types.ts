@@ -48,6 +48,7 @@ export interface GithubSearchReposResponse {
 // GET /repos/{owner}/{repo}/commits?per_page=1 - only the fields we actually read
 export interface GithubCommit {
     sha: string
+    html_url: string
     commit: {
         message: string
         author: {
@@ -55,8 +56,11 @@ export interface GithubCommit {
             date: string
         } | null
     }
+    // the linked GitHub account, distinct from commit.author (raw git identity, name/date only) -
+    // null when the commit isn't linked to an account, in which case there's no profile to link to
     author: {
         login: string
+        html_url: string
     } | null
 }
 

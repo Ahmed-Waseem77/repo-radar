@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Button } from './Button'
 import { fn } from 'storybook/test'
-import BuildCircleSharpIcon from '@mui/icons-material/BuildCircleSharp';
+import BuildCircleTwoToneIcon from '@mui/icons-material/BuildCircleTwoTone';
 
 const meta: Meta<typeof Button> = {
   title: 'Components/Button',
@@ -34,7 +34,7 @@ export const PrimaryIcon: Story = {
         color: 'primary',
         size: 'small',
         onClick: fn(),
-        startIcon: <BuildCircleSharpIcon />
+        startIcon: <BuildCircleTwoToneIcon />
     },
 }
 

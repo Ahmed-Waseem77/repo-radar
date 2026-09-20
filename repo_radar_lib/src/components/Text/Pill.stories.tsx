@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Pill } from './Pill'
-import StarSharpIcon from '@mui/icons-material/StarSharp'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import StarTwoToneIcon from '@mui/icons-material/StarTwoTone'
+import ChevronRightTwoToneIcon from '@mui/icons-material/ChevronRightTwoTone'
 
 const meta: Meta<typeof Pill> = {
   title: 'Components/Pill',
@@ -11,7 +11,6 @@ const meta: Meta<typeof Pill> = {
     size: { control: 'select', options: ['small', 'medium', 'large'] },
     iconSize: { control: 'select', options: ['small', 'medium', 'large'] },
     shape: { control: 'select', options: ['pill', 'rounded'] },
-    appearance: { control: 'select', options: ['solid', 'tonal'] },
     color: { control: 'color' },
   },
 }
@@ -50,7 +49,7 @@ export const CustomIcon: Story = {
   args: {
     label: 'Starred',
     variant: 'default',
-    startIcon: <StarSharpIcon fontSize="inherit" />,
+    startIcon: <StarTwoToneIcon fontSize="inherit" />,
   },
 }
 
@@ -65,7 +64,7 @@ export const WithEndIcon: Story = {
   args: {
     label: 'Details',
     variant: 'info',
-    endIcon: <ChevronRightIcon fontSize="inherit" />,
+    endIcon: <ChevronRightTwoToneIcon fontSize="inherit" />,
   },
 }
 
@@ -82,24 +81,6 @@ export const Sizes: Story = {
   },
 }
 
-// 'tonal' is the automatic default appearance in dark themes - toggle the Storybook
-// toolbar's theme switcher, or force it here via the appearance control, to compare.
-export const Tonal: Story = {
-  args: {
-    label: 'Tonal',
-    variant: 'warning',
-    appearance: 'tonal',
-  },
-}
-
-export const Solid: Story = {
-  args: {
-    label: 'Solid',
-    variant: 'warning',
-    appearance: 'solid',
-  },
-}
-
 export const Shapes: Story = {
   render: (args) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -109,7 +90,7 @@ export const Shapes: Story = {
   ),
   args: {
     variant: 'info',
-    startIcon: <StarSharpIcon fontSize="inherit" />,
+    startIcon: <StarTwoToneIcon fontSize="inherit" />,
   },
 }
 
@@ -125,6 +106,6 @@ export const IndependentIconSize: Story = {
   args: {
     variant: 'info',
     size: 'small',
-    startIcon: <StarSharpIcon fontSize="inherit" />,
+    startIcon: <StarTwoToneIcon fontSize="inherit" />,
   },
 }

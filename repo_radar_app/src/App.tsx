@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Box, Container, Divider, Stack, Typography } from '@mui/material'
+import { Box, Container, Divider, Fade, Stack, Typography } from '@mui/material'
 import {
   AppBar,
   Button,
   ColorModeToggle,
+  getRepoKey,
   LogoIcon,
   NoSearchIcon,
   Pill,
@@ -13,38 +14,48 @@ import {
 import type { RepoOverviewCompactProps, RepoOverviewProps } from '@radar-repo/radar-repo-lib'
 import { useCtrlKFocus } from './hooks/useCtrlKFocus'
 import { useDebouncedValue } from './hooks/useDebouncedValue'
+import { useEscapeClearSearch } from './hooks/useEscapeClearSearch'
 import { useSearchRepo, useTrendingRepos } from './hooks/api'
 import { TRENDING_REPO_COUNT } from './api/github'
+
+// shared by the "Trending Repos" heading and the scroll row below it, so their left edges
+// actually line up instead of each picking their own padding
+const SCROLL_GUTTER = 3
 
 function App() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
-  const [trackedTitles, setTrackedTitles] = useState<Set<string>>(new Set())
+  const [trackedRepoKeys, setTrackedRepoKeys] = useState<Set<string>>(new Set())
   const searchRef = useCtrlKFocus<HTMLInputElement>()
 
   const debouncedSearch = useDebouncedValue(search.trim(), 400)
+
+  useEscapeClearSearch(searchRef, search.trim() !== '', () => {
+    setSearch('')
+    setPage(0)
+  })
 
   const { data, loading, error } = useSearchRepo(
     debouncedSearch ? { query: debouncedSearch, page: page + 1, perPage: rowsPerPage } : null,
   )
   const { data: trendingData, loading: trendingLoading, error: trendingError } = useTrendingRepos()
 
-  const onTrack = (title: string) => {
-    setTrackedTitles((prev) => {
+  const onTrack = (repoKey: string) => {
+    setTrackedRepoKeys((prev) => {
       const next = new Set(prev)
-      if (next.has(title)) {
-        next.delete(title)
+      if (next.has(repoKey)) {
+        next.delete(repoKey)
       } else {
-        next.add(title)
+        next.add(repoKey)
       }
       return next
     })
   }
 
   // TODO: navigate to a repo detail view once that page exists
-  const onDetailedView = (title: string) => {
-    console.log('detailed view requested for', title)
+  const onDetailedView = (repoKey: string) => {
+    console.log('detailed view requested for', repoKey)
   }
 
   let repos: RepoOverviewProps[] = []
@@ -57,8 +68,11 @@ function App() {
     } else if (loading || !data) {
       repos = Array.from({ length: rowsPerPage }, (_, i) => ({
         title: `loading-${i}`,
+        owner: '',
+        url: '',
+        ownerUrl: '',
         description: '',
-        lastCommit: { hash: '', date: '', developerName: '' },
+        lastCommit: { hash: '', date: '', developerName: '', url: '' },
         starCount: 0,
         languageInfo: { languages: [], distribution: [] },
         topics: [],
@@ -72,10 +86,10 @@ function App() {
     } else {
       repos = data.items.map((repo) => ({
         ...repo,
-        onTrack: () => onTrack(repo.title),
-        onDetailedView: () => onDetailedView(repo.title),
+        onTrack: () => onTrack(getRepoKey(repo)),
+        onDetailedView: () => onDetailedView(getRepoKey(repo)),
         loading: false,
-        tracked: trackedTitles.has(repo.title),
+        tracked: trackedRepoKeys.has(getRepoKey(repo)),
       }))
       count = data.totalCount
       emptyStateLabel = 'No repositories found'
@@ -85,10 +99,10 @@ function App() {
   const trendingRepos: RepoOverviewCompactProps[] = trendingData
     ? trendingData.items.map((repo) => ({
         ...repo,
-        onTrack: () => onTrack(repo.title),
-        onDetailedView: () => onDetailedView(repo.title),
+        onTrack: () => onTrack(getRepoKey(repo)),
+        onDetailedView: () => onDetailedView(getRepoKey(repo)),
         loading: false,
-        tracked: trackedTitles.has(repo.title),
+        tracked: trackedRepoKeys.has(getRepoKey(repo)),
       }))
     : []
 
@@ -103,8 +117,11 @@ function App() {
         }}
         start={
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <LogoIcon />
-            <Typography variant="h6">Repo Radar</Typography>
+                <LogoIcon sx={{height: 40, width: 40}} />
+                <Stack direction="column" spacing={-2}>
+                    <Typography variant="h6">Repo</Typography>
+                    <Typography variant="h6">Radar</Typography>
+                </Stack>
           </Stack>
         }
         end={
@@ -157,16 +174,31 @@ function App() {
           </Container>
         </Box>
         {/* only takes up room while the table itself is empty (no search yet, an error, or zero
-            results) - once real rows are showing, this section gets out of their way entirely */}
-        {repos.length === 0 && (
-          <>
+            results) - once real rows are showing, this section gets out of their way entirely.
+            Fade (rather than the plain conditional render this used to be) animates that
+            transition instead of cutting the section in/out instantly. */}
+        <Fade in={repos.length === 0} unmountOnExit>
+          <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             <Divider />
             <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-              <Container maxWidth="md" sx={{ py: 2 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Trending Repos
-                </Typography>
-                <Stack direction="row" spacing={2} sx={{ overflowX: 'auto', pb: 1 }}>
+              <Typography variant="h6" sx={{ px: SCROLL_GUTTER, pt: 2, mb: 2 }}>
+                Trending Repos
+              </Typography>
+              {/* an inset box-shadow on the Stack itself would paint BEHIND its children - the
+                  cards sit flush against the edges with no empty gutter and are fully opaque
+                  (borders, pill fills), so they'd completely hide it. These overlay Boxes paint
+                  on top instead (later siblings stack above earlier ones), each a gradient from
+                  the page's own background.default down to transparent. */}
+              <Box sx={{ position: 'relative' }}>
+                <Stack
+                  direction="row"
+                  spacing={2}
+                  sx={{
+                    overflowX: 'auto',
+                    px: SCROLL_GUTTER,
+                    pb: 2,
+                  }}
+                >
                   {trendingError ? (
                     <Pill
                       variant="error"
@@ -179,8 +211,11 @@ function App() {
                       <RepoOverviewCompact
                         key={`trending-loading-${i}`}
                         title={`loading-${i}`}
+                        owner=""
+                        url=""
+                        ownerUrl=""
                         description=""
-                        lastCommit={{ hash: '', date: '', developerName: '' }}
+                        lastCommit={{ hash: '', date: '', developerName: '', url: '' }}
                         starCount={0}
                         languageInfo={{ languages: [], distribution: [] }}
                         topics={[]}
@@ -192,13 +227,37 @@ function App() {
                       />
                     ))
                   ) : (
-                    trendingRepos.map((repo) => <RepoOverviewCompact key={repo.title} {...repo} />)
+                    trendingRepos.map((repo) => <RepoOverviewCompact key={getRepoKey(repo)} {...repo} />)
                   )}
                 </Stack>
-              </Container>
+                <Box
+                  aria-hidden
+                  sx={(theme) => ({
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    width: 56,
+                    pointerEvents: 'none',
+                    background: `linear-gradient(to right, ${theme.vars?.palette.background.default ?? theme.palette.background.default}, transparent)`,
+                  })}
+                />
+                <Box
+                  aria-hidden
+                  sx={(theme) => ({
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    right: 0,
+                    width: 56,
+                    pointerEvents: 'none',
+                    background: `linear-gradient(to left, ${theme.vars?.palette.background.default ?? theme.palette.background.default}, transparent)`,
+                  })}
+                />
+              </Box>
             </Box>
-          </>
-        )}
+          </Box>
+        </Fade>
       </Box>
     </Box>
   )

@@ -5,12 +5,19 @@ import type { GithubCommit, GithubLanguages, GithubRepo } from './types'
 // to produce - the app composes those in at render time, this is what a mapper can actually give it.
 export type RepoDto = Omit<RepoOverviewDto, 'onTrack' | 'onDetailedView'>
 
+// GitHub's own UI (and convention generally) shows commits by their short 7-character SHA -
+// the full 40-character sha is still what lastCommit.url links to, this is purely the display
+// value everywhere lastCommit.hash is rendered.
+const SHORT_HASH_LENGTH = 7
+
 export function mapCommitToLastCommit(commit: GithubCommit): LastCommit {
     return {
-        hash: commit.sha,
+        hash: commit.sha.slice(0, SHORT_HASH_LENGTH),
         description: commit.commit.message.split('\n')[0],
         date: commit.commit.author?.date ?? '',
         developerName: commit.author?.login ?? commit.commit.author?.name ?? 'unknown',
+        url: commit.html_url,
+        authorUrl: commit.author?.html_url,
     }
 }
 
@@ -31,6 +38,9 @@ export interface RepoExtras {
 export function mapGithubRepoToDto(repo: GithubRepo, extras: RepoExtras): RepoDto {
     return {
         title: repo.name,
+        owner: repo.owner.login,
+        url: repo.html_url,
+        ownerUrl: repo.owner.html_url,
         description: repo.description ?? '',
         lastCommit: extras.lastCommit,
         starCount: repo.stargazers_count,

@@ -16,7 +16,7 @@ export async function fetchRepoExtras(owner: string, name: string, signal?: Abor
     const [latestCommit] = commits.data
 
     return {
-        lastCommit: latestCommit ? mapCommitToLastCommit(latestCommit) : { hash: '', date: '', developerName: '' },
+        lastCommit: latestCommit ? mapCommitToLastCommit(latestCommit) : { hash: '', date: '', developerName: '', url: '' },
         languageInfo: mapLanguagesToLanguageInfo(languages.data),
     }
 }

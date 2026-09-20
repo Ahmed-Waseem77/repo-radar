@@ -16,12 +16,17 @@ type Story = StoryObj<typeof RepoOverview>
 export const Default: Story = {
   args: {
     title: 'repo-radar',
+    owner: 'ahmedwaseem',
+    url: 'https://github.com/ahmedwaseem/repo-radar',
+    ownerUrl: 'https://github.com/ahmedwaseem',
     description: 'A dashboard for tracking repository health and activity.',
     lastCommit: {
       hash: 'a1b2c3d',
       description: 'Wires useColorScheme into the app shell.',
       date: '2026-09-17',
       developerName: 'Ahmed Waseem',
+      url: 'https://github.com/ahmedwaseem/repo-radar/commit/a1b2c3d',
+      authorUrl: 'https://github.com/ahmedwaseem',
     },
     starCount: 1280,
     languageInfo: {
@@ -86,4 +91,18 @@ export const Loading: Story = {
         ...Default.args,
         loading: true
     }
+}
+
+// commit authors aren't always linked to a GitHub account - developerName renders as plain
+// text (no link) when lastCommit.authorUrl is absent
+export const UnlinkedCommitAuthor: Story = {
+  args: {
+    ...Default.args,
+    title: 'repo-radar-external',
+    lastCommit: {
+      ...Default.args!.lastCommit!,
+      developerName: 'external-contributor',
+      authorUrl: undefined,
+    },
+  },
 }

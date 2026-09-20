@@ -2,14 +2,14 @@ import { useState } from 'react'
 import type { MouseEvent } from 'react'
 import { IconButton, ListItemIcon, ListItemText, Menu, MenuItem, Tooltip } from '@mui/material'
 import { useColorScheme } from '@mui/material/styles'
-import LightModeIcon from '@mui/icons-material/LightMode'
-import DarkModeIcon from '@mui/icons-material/DarkMode'
-import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
+import LightModeTwoToneIcon from '@mui/icons-material/LightModeTwoTone'
+import DarkModeTwoToneIcon from '@mui/icons-material/DarkModeTwoTone'
+import SettingsBrightnessTwoToneIcon from '@mui/icons-material/SettingsBrightnessTwoTone'
 
 const modeOptions = [
-    { value: 'light', label: 'Light', icon: <LightModeIcon fontSize="small" /> },
-    { value: 'dark', label: 'Dark', icon: <DarkModeIcon fontSize="small" /> },
-    { value: 'system', label: 'System', icon: <SettingsBrightnessIcon fontSize="small" /> },
+    { value: 'light', label: 'Light', icon: <LightModeTwoToneIcon fontSize="small" /> },
+    { value: 'dark', label: 'Dark', icon: <DarkModeTwoToneIcon fontSize="small" /> },
+    { value: 'system', label: 'System', icon: <SettingsBrightnessTwoToneIcon fontSize="small" /> },
 ] as const
 
 // icon-only trigger (always a sun, regardless of the active mode) that opens a menu of
@@ -26,7 +26,7 @@ export function ColorModeToggle() {
                     aria-label="Color mode"
                     color="inherit"
                 >
-                    <LightModeIcon />
+                    <LightModeTwoToneIcon />
                 </IconButton>
             </Tooltip>
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>

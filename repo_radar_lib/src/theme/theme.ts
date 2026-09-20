@@ -13,14 +13,14 @@ declare module '@mui/material/styles' {
   interface TypeText {
     dimmed: string
   }
-  // Pill's neutral 'default' variant has no semantic color (primary/warning/etc.) to draw a
-  // background/text pair from, so it gets its own deliberately-chosen, theme-aware pair here
+  // Pill's neutral 'default' variant has no semantic color (primary/warning/etc.) to draw its
+  // outline/text color from, so it gets its own deliberately-chosen, theme-aware value here
   // instead of approximating one from `action`/`text` tokens meant for other purposes.
   interface Palette {
-    pillDefault: { background: string; text: string }
+    pillDefault: { text: string }
   }
   interface PaletteOptions {
-    pillDefault?: { background: string; text: string }
+    pillDefault?: { text: string }
   }
 }
 
@@ -75,11 +75,37 @@ export const theme = createTheme({
   },
   components: {
     MuiCssBaseline: {
-      styleOverrides: {
+      styleOverrides: (theme) => ({
         'code, kbd, pre, samp': {
           fontFamily: '"Iosevka", ui-monospace, "SFMono-Regular", Consolas, monospace',
         },
-      },
+        // theme-aware scrollbar, applied globally (not just html/body) so every scrollable
+        // container in the app picks it up, not only the page's own outer scroll. Firefox uses
+        // scrollbar-color/scrollbar-width; everything else uses the -webkit-scrollbar
+        // pseudo-elements. theme.vars.palette.X (falling back to theme.palette.X) is used
+        // explicitly since these are raw CSS values, not sx keys MUI auto-resolves palette
+        // path shorthands for.
+        '*': {
+          scrollbarWidth: 'thin',
+          scrollbarColor: `${theme.vars?.palette.divider ?? theme.palette.divider} transparent`,
+        },
+        '*::-webkit-scrollbar': {
+          width: 10,
+          height: 10,
+        },
+        '*::-webkit-scrollbar-track': {
+          backgroundColor: 'transparent',
+        },
+        '*::-webkit-scrollbar-thumb': {
+          backgroundColor: theme.vars?.palette.divider ?? theme.palette.divider,
+          borderRadius: 8,
+          border: '2px solid transparent',
+          backgroundClip: 'content-box',
+        },
+        '*::-webkit-scrollbar-thumb:hover': {
+          backgroundColor: theme.vars?.palette.text.secondary ?? theme.palette.text.secondary,
+        },
+      }),
     },
   },
   colorSchemes: {
@@ -97,7 +123,6 @@ export const theme = createTheme({
         },
         divider: '#CCDACC',
         pillDefault: {
-          background: '#CCDACC',
           text: '#0C100C',
         },
       },
@@ -116,7 +141,6 @@ export const theme = createTheme({
         },
         divider: '#293427',
         pillDefault: {
-          background: '#293427',
           text: '#EAEDEA',
         },
       },

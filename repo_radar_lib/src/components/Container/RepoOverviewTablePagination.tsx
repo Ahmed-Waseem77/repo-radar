@@ -1,6 +1,7 @@
 import type { ChangeEvent, MouseEvent, ReactNode } from 'react'
 import { Stack, Divider, Typography, TablePagination } from '@mui/material'
 import RepoOverview, { type RepoOverviewProps } from './RepoOverview'
+import { getRepoKey } from '../../util'
 
 export interface RepoOverviewTablePaginationProps {
     // the data to render for the current page. By default (no `count` given) this is treated
@@ -52,7 +53,7 @@ export default function RepoOverviewTablePagination({
         <Stack direction="column">
             <Stack direction="column" divider={<Divider />}>
                 {visibleRepos.map((repo) => (
-                    <RepoOverview key={repo.title} {...repo} />
+                    <RepoOverview key={getRepoKey(repo)} {...repo} />
                 ))}
             </Stack>
             <TablePagination

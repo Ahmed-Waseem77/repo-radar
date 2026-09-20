@@ -4,7 +4,11 @@ export interface LastCommit {
     hash: string,
     description?: string,
     date: string,
-    developerName: string
+    developerName: string,
+    url: string,
+    // GitHub omits this when the commit isn't linked to a GitHub account - render
+    // developerName as plain text (no link) when this is absent
+    authorUrl?: string
 }
 
 export interface LanguageInfo {
@@ -14,6 +18,12 @@ export interface LanguageInfo {
 
 export interface RepoOverviewDto {
     title: string,
+    // GitHub login of the repo's owner - shown as its own caption under the title, and part of
+    // the owner/title composite identity key (see util/repoKey.ts) since title alone collides
+    // across owners
+    owner: string,
+    url: string,
+    ownerUrl: string,
     description: string,
     lastCommit: LastCommit,
     starCount: number,

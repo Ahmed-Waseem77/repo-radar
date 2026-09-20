@@ -56,10 +56,10 @@ function EdgeFade({ side, width }: { side: 'left' | 'right'; width: number }) {
 // row of content can reuse it instead of re-implementing the edge-fade/scroll-track pattern.
 //
 // After mount, it waits `autoScrollDelay` and then advances `autoScrollStep`px every `tickMs`
-// on its own; reaching the end snaps straight back to the start rather than reversing, so it
-// reads as a looping ticker. Hovering pauses it (a paused ref, not state, so hovering doesn't
-// tear down/restart the interval or reset the initial delay) - useful since carousel items are
-// often clickable themselves.
+// on its own; reaching either end reverses direction instead of snapping back to the start, so
+// it bounces back and forth rather than jumping. Hovering pauses it (a paused ref, not state,
+// so hovering doesn't tear down/restart the interval or reset the initial delay) - useful since
+// carousel items are often clickable themselves.
 export default function Carousel({
     children,
     spacing = 2,
@@ -79,15 +79,17 @@ export default function Carousel({
         if (!el) return
 
         let intervalId: ReturnType<typeof setInterval> | undefined
+        let direction: 1 | -1 = 1
 
         const timeoutId = setTimeout(() => {
             intervalId = setInterval(() => {
                 if (pausedRef.current) return
                 if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 1) {
-                    el.scrollLeft = 0
-                } else {
-                    el.scrollLeft += autoScrollStep
+                    direction = -1
+                } else if (el.scrollLeft <= 0) {
+                    direction = 1
                 }
+                el.scrollLeft += direction * autoScrollStep
             }, tickMs)
         }, autoScrollDelay)
 

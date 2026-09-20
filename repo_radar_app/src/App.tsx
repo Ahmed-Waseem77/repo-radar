@@ -16,6 +16,7 @@ import type { RepoOverviewCompactProps, RepoOverviewProps } from '@radar-repo/ra
 import { useCtrlKFocus } from './hooks/useCtrlKFocus'
 import { useDebouncedValue } from './hooks/useDebouncedValue'
 import { useEscapeClearSearch } from './hooks/useEscapeClearSearch'
+import { useRandomInterval } from './hooks/useRandomInterval'
 import { useSearchRepo, useTrendingRepos } from './hooks/api'
 import { TRENDING_REPO_COUNT } from './api/github'
 
@@ -23,12 +24,31 @@ import { TRENDING_REPO_COUNT } from './api/github'
 // actually line up instead of each picking their own padding
 const SCROLL_GUTTER = 3
 
+const LOGO_ANIMATION_MIN_INTERVAL_MS = 10_000 // 10 seconds
+const LOGO_ANIMATION_MAX_INTERVAL_MS = 12 * 10_000 // 2 minutes
+
+// detected once at module load - navigator.platform doesn't change during the app's lifetime.
+// useCtrlKFocus already listens for either metaKey or ctrlKey, so Cmd+K already focuses the
+// search field on macOS regardless of this - this only fixes the displayed hint text, which
+// was always hardcoded to "Ctrl"/"K".
+const isMacOS = /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+const searchShortcutKeys: [string, string] = isMacOS ? ['Cmd', 'K'] : ['Ctrl', 'K']
+
 function App() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [trackedRepoKeys, setTrackedRepoKeys] = useState<Set<string>>(new Set())
   const searchRef = useCtrlKFocus<HTMLInputElement>()
+
+  // undefined until the first random-interval tick, deliberately - see LogoIcon's playSignal
+  // prop for why a defined value from the start would fire the animation on page load
+  const [logoPlaySignal, setLogoPlaySignal] = useState<number>()
+  useRandomInterval(
+    () => setLogoPlaySignal((n) => (n ?? 0) + 1),
+    LOGO_ANIMATION_MIN_INTERVAL_MS,
+    LOGO_ANIMATION_MAX_INTERVAL_MS,
+  )
 
   const debouncedSearch = useDebouncedValue(search.trim(), 400)
 
@@ -112,13 +132,14 @@ function App() {
       <AppBar
         ref={searchRef}
         searchValue={search}
+        shortcutKeys={searchShortcutKeys}
         onSearchChange={(event) => {
           setSearch(event.target.value)
           setPage(0)
         }}
         start={
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <LogoIcon sx={{height: 40, width: 40}} />
+                <LogoIcon playSignal={logoPlaySignal} sx={{height: 40, width: 40}} />
                 <Stack direction="column" spacing={-2}>
                     <Typography variant="h6">Repo</Typography>
                     <Typography variant="h6">Radar</Typography>

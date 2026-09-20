@@ -108,3 +108,25 @@ export const ManualOnly: Story = {
     autoScroll: false,
   },
 }
+
+// a vertically-scrolling grid, manually scrolled only - e.g. the Tracked Repos page
+export const VerticalGrid: Story = {
+  args: {
+    children: [
+      ...repoFixtures,
+      makeRepo({ title: 'stargazer-graph', starCount: 55 }),
+      makeRepo({ title: 'commit-weather', starCount: 12, license: null }),
+    ].map((repo) => <RepoOverviewCompact key={getRepoKey(repo)} {...repo} />),
+    orientation: 'vertical',
+    layout: 'grid',
+    autoScroll: false,
+    maxHeight: 420,
+  },
+  decorators: [
+    (Story) => (
+      <Box sx={{ height: 420 }}>
+        <Story />
+      </Box>
+    ),
+  ],
+}

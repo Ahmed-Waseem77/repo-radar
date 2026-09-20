@@ -10,8 +10,17 @@ declare module '@mui/material/styles' {
   // custom `text.dimmed` palette entry - MUI's Typography auto-generates a `color="textDimmed"`
   // variant for any string key under theme.palette.text, but TypeText itself is a closed
   // interface, so without this the literal below fails an excess-property check.
+  //
+  // `dimmedInverted` is `dimmed` swapped ACROSS schemes rather than matched to one: light mode
+  // gets dark mode's dimmed value and vice versa (baked in directly below, per scheme, rather
+  // than computed by reaching into the other scheme's palette at each call site). Used by a
+  // handful of captions that want a muted color reading consistently regardless of which scheme
+  // is active (e.g. RepoOverview/RepoOverviewCompact's Latest Commit line, SearchField's
+  // shortcut hint text) - `dimmed` itself stays scheme-matched for things like
+  // RepoOverviewTablePagination's empty-state label.
   interface TypeText {
     dimmed: string
+    dimmedInverted: string
   }
   // Pill's neutral 'default' variant has no semantic color (primary/warning/etc.) to draw its
   // outline/text color from, so it gets its own deliberately-chosen, theme-aware value here
@@ -131,6 +140,8 @@ export const theme = createTheme({
           primary: '#0C100C',
           secondary: '#3C473A',
           dimmed: '#B3C4B3',
+          // dark scheme's own `dimmed` value - see the TypeText augmentation above
+          dimmedInverted: '#293427',
         },
         divider: '#CCDACC',
         pillDefault: {
@@ -149,6 +160,8 @@ export const theme = createTheme({
           primary: '#EAEDEA',
           secondary: '#CCDACC',
           dimmed: '#293427',
+          // light scheme's own `dimmed` value - see the TypeText augmentation above
+          dimmedInverted: '#B3C4B3',
         },
         divider: '#293427',
         pillDefault: {

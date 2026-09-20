@@ -12,6 +12,7 @@ import type { RepoOverviewCompactProps, RepoOverviewProps } from '@radar-repo/ra
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useSearchRepo, useTrendingRepos } from '../hooks/api'
 import { TRENDING_REPO_COUNT } from '../api/github'
+import type { RepoDto } from '../api/github/mappers'
 
 // shared by the "Trending Repos" heading and the scroll row below it, so their left edges
 // actually line up instead of each picking their own padding
@@ -20,11 +21,11 @@ const SCROLL_GUTTER = 3
 export interface HomepageProps {
   // raw (undebounced) search text - owned by App.tsx since it also drives AppBar's search field
   search: string
-  trackedRepoKeys: Set<string>
-  onTrack: (repoKey: string) => void
+  trackedKeys: Set<string>
+  onToggleTrack: (repo: RepoDto) => void
 }
 
-export function Homepage({ search, trackedRepoKeys, onTrack }: HomepageProps) {
+export function Homepage({ search, trackedKeys, onToggleTrack }: HomepageProps) {
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
 
@@ -79,10 +80,10 @@ export function Homepage({ search, trackedRepoKeys, onTrack }: HomepageProps) {
     } else {
       repos = data.items.map((repo) => ({
         ...repo,
-        onTrack: () => onTrack(getRepoKey(repo)),
+        onTrack: () => onToggleTrack(repo),
         onDetailedView: () => onDetailedView(getRepoKey(repo)),
         loading: false,
-        tracked: trackedRepoKeys.has(getRepoKey(repo)),
+        tracked: trackedKeys.has(getRepoKey(repo)),
       }))
       count = data.totalCount
       emptyStateLabel = 'No repositories found'
@@ -92,10 +93,10 @@ export function Homepage({ search, trackedRepoKeys, onTrack }: HomepageProps) {
   const trendingRepos: RepoOverviewCompactProps[] = trendingData
     ? trendingData.items.map((repo) => ({
         ...repo,
-        onTrack: () => onTrack(getRepoKey(repo)),
+        onTrack: () => onToggleTrack(repo),
         onDetailedView: () => onDetailedView(getRepoKey(repo)),
         loading: false,
-        tracked: trackedRepoKeys.has(getRepoKey(repo)),
+        tracked: trackedKeys.has(getRepoKey(repo)),
       }))
     : []
 

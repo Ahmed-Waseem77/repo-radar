@@ -7,6 +7,7 @@ import { NotFoundNotice } from '../Text/NotFoundNotice'
 import StarTwoToneIcon from '@mui/icons-material/StarTwoTone'
 import GavelTwoToneIcon from '@mui/icons-material/GavelTwoTone'
 import ChevronRightTwoToneIcon from '@mui/icons-material/ChevronRightTwoTone'
+import BookmarkTwoToneIcon from '@mui/icons-material/BookmarkTwoTone'
 import type { RepoOverviewDto } from '../../types'
 import LanguageDistributionBar from './LanguageDistributionBar'
 
@@ -151,16 +152,7 @@ export default function RepoOverview({onTrack, onDetailedView, loading, ...props
                 <Typography
                     noWrap
                     variant='caption'
-                    sx={(theme) => ({
-                        // deliberately inverted from the scheme-matched text.dimmed token: light mode
-                        // shows dark mode's dimmed value and vice versa - text.dimmed itself is left
-                        // untouched since other components (e.g. the empty-state label) rely on it
-                        // resolving to the current scheme's own value.
-                        color: theme.colorSchemes?.dark?.palette?.text?.dimmed ?? '#293427',
-                        ...theme.applyStyles('dark', {
-                            color: theme.colorSchemes?.light?.palette?.text?.dimmed ?? '#B3C4B3',
-                        }),
-                    })}
+                    color='textDimmedInverted'
                 >
                     Latest Commit: <TextLink href={props.lastCommit.url} sx={interactiveSx}><InlineCode color='secondary'>{props.lastCommit.hash}</InlineCode></TextLink> by{' '}
                     {props.lastCommit.authorUrl ? (
@@ -180,10 +172,14 @@ export default function RepoOverview({onTrack, onDetailedView, loading, ...props
                 <Button
                     label={props.tracked ? 'Untrack' : 'Track'}
                     onClick={onTrack}
-                    variant="contained"
+                    variant={props.tracked ? 'outlined' : 'contained'}
                     color={props.tracked ? 'secondary' : 'primary'}
                     size='small'
-                    sx={{ width: 20, ...interactiveSx }}
+                    startIcon={<BookmarkTwoToneIcon />}
+                    // without this, the outer column Stack's default cross-axis stretch would
+                    // grow the button to the full width of the card instead of sizing to its
+                    // own label/icon
+                    sx={{ alignSelf: 'flex-start', ...interactiveSx }}
                 />
             {/* covers the whole card as the actual click target for "view details" - a real
                 <button> (not role="button" on the root) so it's never an ancestor of the real

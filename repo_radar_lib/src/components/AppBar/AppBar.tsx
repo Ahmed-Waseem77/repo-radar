@@ -6,14 +6,18 @@ import type { SearchFieldProps } from './SearchField'
 export interface AppBarProps {
     // React 19 accepts `ref` as a plain prop on function components - forwardRef is no
     // longer necessary. Forwarded straight through to SearchField's own `ref` prop below,
-    // which exposes the underlying search <input> so the app's Ctrl+K hook can focus it.
+    // which exposes the underlying search <input> so the app's keyboard-shortcut hooks can
+    // focus it.
     ref?: Ref<HTMLInputElement>
     // controlled search value/handler - the app owns debouncing and any data fetching,
     // this component only renders and forwards the raw input event
     searchValue: string
     onSearchChange: (event: ChangeEvent<HTMLInputElement>) => void
+    onSearchFocus?: SearchFieldProps['onFocus']
     searchPlaceholder?: SearchFieldProps['placeholder']
-    shortcutKeys?: SearchFieldProps['shortcutKeys']
+    searchHints?: SearchFieldProps['hints']
+    searchScopePill?: SearchFieldProps['scopePill']
+    onSearchScopePillRemove?: SearchFieldProps['onScopePillRemove']
     // left slot, e.g. logo/title
     start?: ReactNode
     // right slot, e.g. avatar/theme toggle
@@ -26,8 +30,11 @@ export function AppBar({
     ref,
     searchValue,
     onSearchChange,
+    onSearchFocus,
     searchPlaceholder,
-    shortcutKeys,
+    searchHints,
+    searchScopePill,
+    onSearchScopePillRemove,
     start,
     end,
     elevation = 4,
@@ -81,8 +88,11 @@ export function AppBar({
                         ref={ref}
                         value={searchValue}
                         onChange={onSearchChange}
+                        onFocus={onSearchFocus}
                         placeholder={searchPlaceholder}
-                        shortcutKeys={shortcutKeys}
+                        hints={searchHints}
+                        scopePill={searchScopePill}
+                        onScopePillRemove={onSearchScopePillRemove}
                         sx={{ width: '100%', maxWidth: 480 }}
                     />
                 </Stack>

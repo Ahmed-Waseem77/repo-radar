@@ -1,15 +1,28 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { Box, Stack } from '@mui/material'
+import { Box } from '@mui/material'
+
+export type CarouselOrientation = 'horizontal' | 'vertical'
+// 'row': a single scrolling line along `orientation`'s axis (the original behavior).
+// 'grid': items wrap onto multiple lines instead, still scrolling along `orientation`'s axis -
+// e.g. a vertically-scrolling grid of cards, several per row, instead of one long row.
+export type CarouselLayout = 'row' | 'grid'
 
 export interface CarouselProps {
     children: ReactNode
-    // gap between items - same unit Stack's own `spacing` prop uses
+    // gap between items, in theme spacing units
     spacing?: number
-    // horizontal padding on the scroll track itself, in theme spacing units
+    // padding on the scroll track's start/end edges (along `orientation`'s axis), in theme spacing units
     gutter?: number
-    // width (px) of each edge's fade-to-background overlay
+    // width/height (px) of each edge's fade-to-background overlay, along `orientation`'s axis
     edgeFadeWidth?: number
+    // which axis scrolls - 'horizontal' (default) matches the original row-of-cards behavior.
+    orientation?: CarouselOrientation
+    layout?: CarouselLayout
+    // caps the scroll track's size along `orientation`'s axis - required for 'vertical' to
+    // actually scroll instead of just growing to fit its content; 'horizontal' doesn't need it
+    // since that axis already sizes to the viewport it's rendered in.
+    maxHeight?: number | string
     // set false to disable the automatic scrolling entirely (still scrollable by the user)
     autoScroll?: boolean
     // ms to wait after mount before auto-scrolling starts
@@ -21,50 +34,69 @@ export interface CarouselProps {
 
 const DEFAULT_EDGE_FADE_WIDTH = 56
 
-// one fade-to-background overlay, reused for both edges (mirrored via `side`) instead of two
-// near-identical Boxes - an inset box-shadow on the scroll track itself would paint BEHIND its
-// children, which are typically fully opaque (cards, pills, borders), so they'd hide it
-// entirely; this paints on top instead, as a sibling positioned over each edge.
+// one fade-to-background overlay, reused for both edges of either axis (mirrored via
+// `orientation`/`side`) instead of four near-identical Boxes - an inset box-shadow on the scroll
+// track itself would paint BEHIND its children, which are typically fully opaque (cards, pills,
+// borders), so they'd hide it entirely; this paints on top instead, as a sibling positioned over
+// each edge.
 //
 // zIndex needs to be explicit and higher than any interactive content inside the track (e.g.
 // RepoOverviewCompact lifts its title/commit-hash links and Track button to zIndex:1 so they
-// win hit-testing over its own internal "view details" overlay button). The scroll track
-// (Stack) isn't itself positioned, so those descendants are promoted straight into THIS
-// stacking context and painted by z-index like any other child here - without an explicit,
-// higher zIndex the fade (z-index:auto) would sit BEHIND them instead of over them.
-// pointerEvents:none keeps that purely visual, not blocking clicks on what's underneath.
-function EdgeFade({ side, width }: { side: 'left' | 'right'; width: number }) {
+// win hit-testing over its own internal "view details" overlay button). The scroll track isn't
+// itself positioned, so those descendants are promoted straight into THIS stacking context and
+// painted by z-index like any other child here - without an explicit, higher zIndex the fade
+// (z-index:auto) would sit BEHIND them instead of over them. pointerEvents:none keeps that
+// purely visual, not blocking clicks on what's underneath.
+function EdgeFade({
+    orientation,
+    side,
+    size,
+}: {
+    orientation: CarouselOrientation
+    side: 'start' | 'end'
+    size: number
+}) {
+    const horizontal = orientation === 'horizontal'
+    const edgePosition = horizontal
+        ? { top: 0, bottom: 0, [side === 'start' ? 'left' : 'right']: 0, width: size }
+        : { left: 0, right: 0, [side === 'start' ? 'top' : 'bottom']: 0, height: size }
+    const gradientDirection = horizontal
+        ? side === 'start' ? 'to right' : 'to left'
+        : side === 'start' ? 'to bottom' : 'to top'
+
     return (
         <Box
             aria-hidden
             sx={(theme) => ({
                 position: 'absolute',
-                top: 0,
-                bottom: 0,
-                [side]: 0,
-                width,
+                ...edgePosition,
                 zIndex: 2,
                 pointerEvents: 'none',
-                background: `linear-gradient(to ${side === 'left' ? 'right' : 'left'}, ${theme.vars?.palette.background.default ?? theme.palette.background.default}, transparent)`,
+                background: `linear-gradient(${gradientDirection}, ${theme.vars?.palette.background.default ?? theme.palette.background.default}, transparent)`,
             })}
         />
     )
 }
 
-// A horizontally-scrolling row with fade-to-background edges, matching what App.tsx built
+// A scrolling row (or wrapping grid) with fade-to-background edges, matching what App.tsx built
 // inline for its "Trending Repos" row (see that component's history) - generalized here so any
-// row of content can reuse it instead of re-implementing the edge-fade/scroll-track pattern.
+// collection of content can reuse it instead of re-implementing the edge-fade/scroll-track
+// pattern, whether it's a single auto-scrolling line or a manually-scrolled grid.
 //
-// After mount, it waits `autoScrollDelay` and then advances `autoScrollStep`px every `tickMs`
-// on its own; reaching either end reverses direction instead of snapping back to the start, so
-// it bounces back and forth rather than jumping. Hovering pauses it (a paused ref, not state,
-// so hovering doesn't tear down/restart the interval or reset the initial delay) - useful since
-// carousel items are often clickable themselves.
+// When autoScroll is on, it waits `autoScrollDelay` after mount and then advances
+// `autoScrollStep`px every `tickMs` along `orientation`'s axis on its own; reaching either end
+// reverses direction instead of snapping back to the start, so it bounces back and forth rather
+// than jumping. Hovering pauses it (a paused ref, not state, so hovering doesn't tear down/restart
+// the interval or reset the initial delay) - useful since carousel items are often clickable
+// themselves.
 export default function Carousel({
     children,
     spacing = 2,
     gutter = 0,
     edgeFadeWidth = DEFAULT_EDGE_FADE_WIDTH,
+    orientation = 'horizontal',
+    layout = 'row',
+    maxHeight,
     autoScroll = true,
     autoScrollDelay = 2000,
     autoScrollStep = 1,
@@ -72,6 +104,7 @@ export default function Carousel({
 }: CarouselProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const pausedRef = useRef(false)
+    const horizontal = orientation === 'horizontal'
 
     useEffect(() => {
         if (!autoScroll) return
@@ -84,12 +117,19 @@ export default function Carousel({
         const timeoutId = setTimeout(() => {
             intervalId = setInterval(() => {
                 if (pausedRef.current) return
-                if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 1) {
+                const scrollPos = horizontal ? el.scrollLeft : el.scrollTop
+                const clientSize = horizontal ? el.clientWidth : el.clientHeight
+                const scrollSize = horizontal ? el.scrollWidth : el.scrollHeight
+                if (scrollPos + clientSize >= scrollSize - 1) {
                     direction = -1
-                } else if (el.scrollLeft <= 0) {
+                } else if (scrollPos <= 0) {
                     direction = 1
                 }
-                el.scrollLeft += direction * autoScrollStep
+                if (horizontal) {
+                    el.scrollLeft += direction * autoScrollStep
+                } else {
+                    el.scrollTop += direction * autoScrollStep
+                }
             }, tickMs)
         }, autoScrollDelay)
 
@@ -97,24 +137,46 @@ export default function Carousel({
             clearTimeout(timeoutId)
             clearInterval(intervalId)
         }
-    }, [autoScroll, autoScrollDelay, autoScrollStep, tickMs])
+    }, [autoScroll, autoScrollDelay, autoScrollStep, tickMs, horizontal])
 
     return (
         <Box
-            sx={{ position: 'relative' }}
+            sx={{
+                position: 'relative',
+                ...(horizontal ? {} : { height: '100%', minHeight: 0 }),
+            }}
             onMouseEnter={() => { pausedRef.current = true }}
             onMouseLeave={() => { pausedRef.current = false }}
         >
-            <Stack
+            <Box
                 ref={scrollRef}
-                direction="row"
-                spacing={spacing}
-                sx={{ overflowX: 'auto', px: gutter, pb: 2 }}
+                sx={(theme) => ({
+                    display: 'flex',
+                    flexDirection: layout === 'grid' || horizontal ? 'row' : 'column',
+                    flexWrap: layout === 'grid' ? 'wrap' : 'nowrap',
+                    // a grid's rows/items default to stretch, which grows every card to match
+                    // the tallest one in its row (and each row to fill the whole scroll track) -
+                    // grid items should keep their own natural height instead, and sit centered
+                    // in the row rather than pinned to the start.
+                    ...(layout === 'grid' && {
+                        alignItems: 'flex-start',
+                        alignContent: 'flex-start',
+                        justifyContent: 'center',
+                    }),
+                    gap: theme.spacing(spacing),
+                    overflowX: horizontal ? 'auto' : 'hidden',
+                    overflowY: horizontal ? 'hidden' : 'auto',
+                    px: horizontal ? gutter : 0,
+                    py: horizontal ? 0 : gutter,
+                    pb: horizontal ? 2 : undefined,
+                    height: horizontal ? undefined : '100%',
+                    maxHeight: horizontal ? undefined : maxHeight,
+                })}
             >
                 {children}
-            </Stack>
-            <EdgeFade side="left" width={edgeFadeWidth} />
-            <EdgeFade side="right" width={edgeFadeWidth} />
+            </Box>
+            <EdgeFade orientation={orientation} side="start" size={edgeFadeWidth} />
+            <EdgeFade orientation={orientation} side="end" size={edgeFadeWidth} />
         </Box>
     )
 }

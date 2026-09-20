@@ -42,6 +42,30 @@ export const CustomShortcut: Story = {
     render: (args) => <InteractiveSearchField {...args} />,
     args: {
         value: '',
-        shortcutKeys: ['Cmd', 'K'],
+        hints: [{ keys: ['Cmd', 'K'] }],
+    },
+}
+
+// e.g. the AppBar while on the Tracked Repos page - each hint gets its own label once there's
+// more than one, to tell them apart
+export const MultipleHints: Story = {
+    render: (args) => <InteractiveSearchField {...args} />,
+    args: {
+        value: '',
+        hints: [
+            { keys: ['Ctrl', 'K'], label: 'to search repos' },
+            { keys: ['Ctrl', 'J'], label: 'to search tracked repos' },
+        ],
+    },
+}
+
+// a removable scope tag ahead of the query - e.g. Tracked Repos' default "In Tracked:" filter.
+// Backspace removes it once the typed query is itself empty.
+export const ScopePill: Story = {
+    render: (args) => <InteractiveSearchField {...args} />,
+    args: {
+        value: '',
+        scopePill: { label: 'In Tracked:' },
+        onScopePillRemove: () => alert('scope pill removed'),
     },
 }

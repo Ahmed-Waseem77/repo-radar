@@ -1,3 +1,5 @@
+export { default as Carousel } from './Carousel'
+export * from './Carousel'
 export { default as LanguageDistributionBar } from './LanguageDistributionBar'
 export * from './LanguageDistributionBar'
 export { default as RepoOverview } from './RepoOverview'

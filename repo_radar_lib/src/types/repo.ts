@@ -25,7 +25,10 @@ export interface RepoOverviewDto {
     url: string,
     ownerUrl: string,
     description: string,
-    lastCommit: LastCommit,
+    // null when the commit lookup failed for this specific repo (e.g. GitHub 409s the commits
+    // endpoint for an empty/no-history repo) - the rest of this DTO still comes straight from
+    // the search/list response and is unaffected, so only the commit section needs to degrade
+    lastCommit: LastCommit | null,
     starCount: number,
     languageInfo: LanguageInfo,
     topics: string[],

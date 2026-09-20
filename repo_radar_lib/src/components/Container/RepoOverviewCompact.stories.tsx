@@ -102,6 +102,17 @@ export const UnlinkedCommitAuthor: Story = {
   },
 }
 
+// e.g. GitHub 409s the commits endpoint for an empty/no-history repo - the rest of the card
+// (title, pills, description) still comes from the search/list response and renders normally,
+// only the Latest Commit section degrades to an error notice
+export const CommitNotFound: Story = {
+  args: {
+    ...Default.args,
+    title: 'repo-radar-empty',
+    lastCommit: null,
+  },
+}
+
 // last commit + Track button dropped, archived collapses to a bare warning icon, remaining
 // pills move beside the title/owner block instead of their own row
 export const Stripped: Story = {

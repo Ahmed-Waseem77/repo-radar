@@ -31,7 +31,9 @@ export function mapLanguagesToLanguageInfo(languages: GithubLanguages): Language
 }
 
 export interface RepoExtras {
-    lastCommit: LastCommit
+    // null when the commit lookup failed for this specific repo (e.g. GitHub 409s the commits
+    // endpoint for an empty/no-history repo) - see fetchRepoExtras
+    lastCommit: LastCommit | null
     languageInfo: LanguageInfo
 }
 

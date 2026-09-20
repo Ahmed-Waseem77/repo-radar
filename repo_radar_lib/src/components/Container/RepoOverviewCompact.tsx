@@ -3,6 +3,7 @@ import { Button } from '../Button/Button'
 import { Pill } from '../Text/Pill'
 import InlineCode from '../Text/InlineCode'
 import { TextLink } from '../Text/TextLink'
+import { NotFoundNotice } from '../Text/NotFoundNotice'
 import StarTwoToneIcon from '@mui/icons-material/StarTwoTone'
 import GavelTwoToneIcon from '@mui/icons-material/GavelTwoTone'
 import WarningTwoToneIcon from '@mui/icons-material/WarningTwoTone'
@@ -186,33 +187,43 @@ export default function RepoOverviewCompact({
             {!stripped && (
                 <>
                     <Stack direction='column' spacing={0}>
-                        <Typography
-                            variant='caption'
-                            sx={(theme) => ({
-                                // deliberately inverted from the scheme-matched text.dimmed token, matching
-                                // RepoOverview - see that component for the full rationale.
-                                color: theme.colorSchemes?.dark?.palette?.text?.dimmed ?? '#293427',
-                                ...theme.applyStyles('dark', {
-                                    color: theme.colorSchemes?.light?.palette?.text?.dimmed ?? '#B3C4B3',
-                                }),
-                            })}
-                        >
-                        Latest Commit: <TextLink href={props.lastCommit.url} sx={interactiveSx}><InlineCode color='secondary'>{props.lastCommit.hash}</InlineCode></TextLink>
-                        </Typography>
-                    <Typography variant='caption'
-                            sx={(theme) => ({
-                                // deliberately inverted from the scheme-matched text.dimmed token, matching
-                                // RepoOverview - see that component for the full rationale.
-                                color: theme.colorSchemes?.dark?.palette?.text?.dimmed ?? '#293427',
-                                ...theme.applyStyles('dark', {
-                                    color: theme.colorSchemes?.light?.palette?.text?.dimmed ?? '#B3C4B3',
-                                }),
-                            })}
-                    > by {props.lastCommit.authorUrl ? (
-                            <TextLink href={props.lastCommit.authorUrl} sx={interactiveSx}>{props.lastCommit.developerName}</TextLink>
+                        {props.lastCommit ? (
+                            <>
+                                <Typography
+                                    variant='caption'
+                                    sx={(theme) => ({
+                                        // deliberately inverted from the scheme-matched text.dimmed token, matching
+                                        // RepoOverview - see that component for the full rationale.
+                                        color: theme.colorSchemes?.dark?.palette?.text?.dimmed ?? '#293427',
+                                        ...theme.applyStyles('dark', {
+                                            color: theme.colorSchemes?.light?.palette?.text?.dimmed ?? '#B3C4B3',
+                                        }),
+                                    })}
+                                >
+                                Latest Commit: <TextLink href={props.lastCommit.url} sx={interactiveSx}><InlineCode color='secondary'>{props.lastCommit.hash}</InlineCode></TextLink>
+                                </Typography>
+                            <Typography variant='caption'
+                                    sx={(theme) => ({
+                                        // deliberately inverted from the scheme-matched text.dimmed token, matching
+                                        // RepoOverview - see that component for the full rationale.
+                                        color: theme.colorSchemes?.dark?.palette?.text?.dimmed ?? '#293427',
+                                        ...theme.applyStyles('dark', {
+                                            color: theme.colorSchemes?.light?.palette?.text?.dimmed ?? '#B3C4B3',
+                                        }),
+                                    })}
+                            > by {props.lastCommit.authorUrl ? (
+                                    <TextLink href={props.lastCommit.authorUrl} sx={interactiveSx}>{props.lastCommit.developerName}</TextLink>
+                                ) : (
+                                    props.lastCommit.developerName
+                                )} on {props.lastCommit.date} </Typography>
+                            </>
                         ) : (
-                            props.lastCommit.developerName
-                        )} on {props.lastCommit.date} </Typography>
+                            // the repo's commit history failed to load (e.g. GitHub 409s the
+                            // commits endpoint for an empty/no-history repo) - the rest of this
+                            // card came straight from the search/list response and is
+                            // unaffected, so only this section degrades
+                            <NotFoundNotice resource="commit" />
+                        )}
                     </Stack>
                     <Button
                         label={props.tracked ? 'Untrack' : 'Track'}

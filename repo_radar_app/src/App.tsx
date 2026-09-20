@@ -3,6 +3,7 @@ import { Box, Container, Divider, Fade, Stack, Typography } from '@mui/material'
 import {
   AppBar,
   Button,
+  Carousel,
   ColorModeToggle,
   getRepoKey,
   LogoIcon,
@@ -184,77 +185,38 @@ function App() {
               <Typography variant="h6" sx={{ px: SCROLL_GUTTER, pt: 2, mb: 2 }}>
                 Trending Repos
               </Typography>
-              {/* an inset box-shadow on the Stack itself would paint BEHIND its children - the
-                  cards sit flush against the edges with no empty gutter and are fully opaque
-                  (borders, pill fills), so they'd completely hide it. These overlay Boxes paint
-                  on top instead (later siblings stack above earlier ones), each a gradient from
-                  the page's own background.default down to transparent. */}
-              <Box sx={{ position: 'relative' }}>
-                <Stack
-                  direction="row"
-                  spacing={2}
-                  sx={{
-                    overflowX: 'auto',
-                    px: SCROLL_GUTTER,
-                    pb: 2,
-                  }}
-                >
-                  {trendingError ? (
-                    <Pill
-                      variant="error"
-                      size="large"
-                      iconSize="large"
-                      label={`Something went wrong loading trending repos: ${trendingError.message}`}
+              <Carousel gutter={SCROLL_GUTTER}>
+                {trendingError ? (
+                  <Pill
+                    variant="error"
+                    size="large"
+                    iconSize="large"
+                    label={`Something went wrong loading trending repos: ${trendingError.message}`}
+                  />
+                ) : trendingLoading || !trendingData ? (
+                  Array.from({ length: TRENDING_REPO_COUNT }, (_, i) => (
+                    <RepoOverviewCompact
+                      key={`trending-loading-${i}`}
+                      title={`loading-${i}`}
+                      owner=""
+                      url=""
+                      ownerUrl=""
+                      description=""
+                      lastCommit={{ hash: '', date: '', developerName: '', url: '' }}
+                      starCount={0}
+                      languageInfo={{ languages: [], distribution: [] }}
+                      topics={[]}
+                      archived={false}
+                      onTrack={() => {}}
+                      onDetailedView={() => {}}
+                      loading
+                      tracked={false}
                     />
-                  ) : trendingLoading || !trendingData ? (
-                    Array.from({ length: TRENDING_REPO_COUNT }, (_, i) => (
-                      <RepoOverviewCompact
-                        key={`trending-loading-${i}`}
-                        title={`loading-${i}`}
-                        owner=""
-                        url=""
-                        ownerUrl=""
-                        description=""
-                        lastCommit={{ hash: '', date: '', developerName: '', url: '' }}
-                        starCount={0}
-                        languageInfo={{ languages: [], distribution: [] }}
-                        topics={[]}
-                        archived={false}
-                        onTrack={() => {}}
-                        onDetailedView={() => {}}
-                        loading
-                        tracked={false}
-                      />
-                    ))
-                  ) : (
-                    trendingRepos.map((repo) => <RepoOverviewCompact key={getRepoKey(repo)} {...repo} />)
-                  )}
-                </Stack>
-                <Box
-                  aria-hidden
-                  sx={(theme) => ({
-                    position: 'absolute',
-                    top: 0,
-                    bottom: 0,
-                    left: 0,
-                    width: 56,
-                    pointerEvents: 'none',
-                    background: `linear-gradient(to right, ${theme.vars?.palette.background.default ?? theme.palette.background.default}, transparent)`,
-                  })}
-                />
-                <Box
-                  aria-hidden
-                  sx={(theme) => ({
-                    position: 'absolute',
-                    top: 0,
-                    bottom: 0,
-                    right: 0,
-                    width: 56,
-                    pointerEvents: 'none',
-                    background: `linear-gradient(to left, ${theme.vars?.palette.background.default ?? theme.palette.background.default}, transparent)`,
-                  })}
-                />
-              </Box>
+                  ))
+                ) : (
+                  trendingRepos.map((repo) => <RepoOverviewCompact key={getRepoKey(repo)} {...repo} />)
+                )}
+              </Carousel>
             </Box>
           </Box>
         </Fade>

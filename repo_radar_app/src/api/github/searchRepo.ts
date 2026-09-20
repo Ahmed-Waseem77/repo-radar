@@ -41,8 +41,19 @@ export async function searchRepo({
 
     const items = await Promise.all(
         data.items.map(async (repo) => {
-            const extras = await fetchRepoExtras(repo.owner.login, repo.name, signal)
-            return mapGithubRepoToDto(repo, extras)
+            try {
+                const extras = await fetchRepoExtras(repo.owner.login, repo.name, signal)
+                return mapGithubRepoToDto(repo, extras)
+            } catch (error) {
+                // a stale/cancelled request should still reject normally, not silently resolve
+                // with degraded data - the caller's own abort handling depends on that
+                if (signal?.aborted) throw error
+                // any other per-repo enrichment failure degrades just this one row (its commit
+                // section renders a "not found" notice) instead of failing the entire search -
+                // the base repo fields below all come straight from this search response, not
+                // from the failed call, so they're unaffected.
+                return mapGithubRepoToDto(repo, { lastCommit: null, languageInfo: { languages: [], distribution: [] } })
+            }
         }),
     )
 

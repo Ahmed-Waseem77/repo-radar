@@ -88,6 +88,17 @@ export const theme = createTheme({
         '*': {
           scrollbarWidth: 'thin',
           scrollbarColor: `${theme.vars?.palette.divider ?? theme.palette.divider} transparent`,
+          // smooths the light/dark scheme switch, which is otherwise an instant swap of every
+          // --mui-palette-* CSS variable (cssVariables:true) - scoped to just color-related
+          // properties, not `all`, so it doesn't interfere with unrelated transitions (height,
+          // transform, opacity, ...). Elements that already set their own more specific
+          // `transition` (most interactive components in this app do, for their own hover
+          // states) simply override this on the properties they list - this is only a fallback
+          // for everything else, which is still most static text/background/border elements.
+          transition: theme.transitions.create(
+            ['background-color', 'color', 'border-color', 'box-shadow', 'fill', 'stroke', 'outline-color'],
+            { duration: theme.transitions.duration.standard },
+          ),
         },
         '*::-webkit-scrollbar': {
           width: 10,

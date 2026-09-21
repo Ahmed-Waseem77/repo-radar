@@ -10,6 +10,9 @@ const meta: Meta<typeof AppBar> = {
     parameters: {
         layout: 'fullscreen',
     },
+    argTypes: {
+        hideSearch: { control: 'boolean' },
+    },
 }
 export default meta
 
@@ -69,5 +72,15 @@ export const WithSlots: Story = {
                 })}
             />
         ),
+    },
+}
+
+// e.g. a narrow screen, where search moves into its own separate bar lower on the page instead
+// of squeezing into this one - start/end sit at the two edges with no reserved middle column
+export const HideSearch: Story = {
+    render: (args) => <InteractiveAppBar {...args} />,
+    args: {
+        ...WithSlots.args,
+        hideSearch: true,
     },
 }

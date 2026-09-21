@@ -1,3 +1,5 @@
+export { default as EmptyState } from './EmptyState'
+export * from './EmptyState'
 export { default as InlineCode } from './InlineCode'
 export * from './InlineCode'
 export * from './NotFoundNotice'

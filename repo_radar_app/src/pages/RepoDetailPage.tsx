@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, CircularProgress } from '@mui/material'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getRepoKey, Pill } from '@radar-repo/radar-repo-lib'
 import { useGetRepo } from '../hooks/api'
+import { useNarrowScreen } from '../hooks/useNarrowScreen'
 import { useSidePanelRepos } from '../hooks/useSidePanelRepos'
 import type { RepoDto } from '../api/github/mappers'
 import type { TrackedRepo } from '../api/trackedRepos'
 import { RepoDetailView } from '../components/RepoDetailView'
+import type { RefreshButtonProps } from '../components/RepoDetail'
 
 export interface RepoDetailPageProps {
     // whatever the card that was clicked already had in hand - lets this skip its own fetch for
@@ -23,6 +25,18 @@ export interface RepoDetailPageProps {
     trackedKeys: Set<string>
     onToggleTrack: (repo: RepoDto) => void
     onUntrack: (repoKey: string) => void
+    // clears the raw search text - wired to App.tsx's own setSearch('') so a narrow screen's
+    // side-panel search overlay (see RepoDetailView) can dismiss itself from a backdrop tap
+    // without needing App.tsx's own state setter threaded down any further than this.
+    onClearSearch: () => void
+    // narrow-screen-only: App.tsx's own toggle for whether the search overlay is showing (see
+    // its handleBack) - resolved here against this page's own `narrow`/`search` before being
+    // handed to RepoDetailView, so App.tsx doesn't need to know about either.
+    searchPanelOpen: boolean
+    // reports this page's own refresh control up to App.tsx so it can render in the AppBar (see
+    // there) on a narrow screen instead of inline here - `null` on unmount, so App.tsx clears it
+    // rather than leaving a stale control pointing at a page that's no longer showing.
+    onRefreshControlsChange: (controls: RefreshButtonProps | null) => void
 }
 
 // the /repos/:owner/:name route's element - a real, bookmarkable/shareable/refreshable page
@@ -36,8 +50,12 @@ export function RepoDetailPage({
     trackedKeys,
     onToggleTrack,
     onUntrack,
+    onClearSearch,
+    searchPanelOpen,
+    onRefreshControlsChange,
 }: RepoDetailPageProps) {
     const navigate = useNavigate()
+    const narrow = useNarrowScreen()
     const { owner = '', name = '' } = useParams()
     const routeKey = `${owner}/${name}`
 
@@ -79,11 +97,27 @@ export function RepoDetailPage({
     const repo = resolvedRepo ?? lastKnownRepo
     const isRefreshing = refreshToken > 0 && fetchLoading
 
+    // reports this page's own refresh control up to App.tsx (see onRefreshControlsChange above) -
+    // a real side effect (it mutates a DIFFERENT component's state), so this belongs in an effect
+    // rather than the render body itself, unlike this file's other render-time state adjustments
+    // above (which only ever touch this component's own state).
+    useEffect(() => {
+        onRefreshControlsChange({ onRefresh: () => setRefreshToken((token) => token + 1), refreshing: isRefreshing })
+        return () => onRefreshControlsChange(null)
+    }, [isRefreshing, onRefreshControlsChange])
+
     // switches to that repo - a `replace` navigation, same as switching repos already did before
     // this page existed, so one browser-back press still exits the view outright regardless of
     // how many repos were viewed here via the side panel.
-    const selectSidePanelRepo = (repo: RepoDto) =>
+    const selectSidePanelRepo = (repo: RepoDto) => {
         navigate(`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.title)}`, { replace: true })
+        // on a narrow screen the panel is the search overlay (see RepoDetailView) - picking a
+        // result is what "goes back to RepoDetail view" per the design, so clearing the search
+        // closes it. On a wide screen the panel is a permanent live-filtered column instead -
+        // clearing the query there would reset it back to the unfiltered list on every click,
+        // which would fight the "search keeps updating the side panel" behavior it's meant to have.
+        if (narrow) onClearSearch()
+    }
 
     const sidePanelState = useSidePanelRepos({
         search,
@@ -118,6 +152,8 @@ export function RepoDetailPage({
             sidePanelState={sidePanelState}
             onRefresh={() => setRefreshToken((token) => token + 1)}
             refreshing={isRefreshing}
+            searchPanelVisible={narrow && searchPanelOpen && search.trim() !== ''}
+            onClearSearch={onClearSearch}
         />
     )
 }

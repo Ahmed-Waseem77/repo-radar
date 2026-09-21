@@ -1,0 +1,29 @@
+name: Storybook Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  storybook-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # every *.stories.tsx runs as a real Vitest test via @storybook/addon-vitest (see
+      # repo_radar_lib/vite.config.ts), in a headless Chromium instance - needs the browser
+      # binary installed, which npm install alone doesn't do.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: repo_radar_lib
+
+      - run: npm run coverage --workspace repo_radar_lib

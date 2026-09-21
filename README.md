@@ -1,3 +1,10 @@
+# Repo Radar
+
+![ESLint](https://github.com/Ahmed-Waseem77/repo-radar/actions/workflows/eslint.yml/badge.svg)
+![Storybook Coverage](https://github.com/Ahmed-Waseem77/repo-radar/actions/workflows/storybook-coverage.yml/badge.svg)
+
+<img src="repo_radar_lib/src/assets/NO_SEARCH.svg" alt="Repo Radar" width="200" />
+
 # Installation
 
 ``` shell
@@ -68,13 +75,23 @@ GenAI was used so far to aid in the following:
 - Making of Simple Components such as `Pill.tsx` or `Button.tsx`
 - Moving code around/refactoring maintaining original code essence
 - Wrapping SVG assets in SVG Components under `radar_repo_lib/src/components/Icons/`
-- Debugging CSS and visual errors
+- Debugging CSS, MUI components and visual errors
 
 Any AI output was reviewed beforehand
 
 --- 
 
 # Architecture
+The API to UI component data flow goes through 2-3 layers
+Network Layer `client.ts` 
+Mapper Layer, just thin middleware to change schemas
+Hooks Layer (what components actually use)
+
+## LocalStorage Handling
+This is particulary built as an async process in an adapter pattern even though its synchronous:
+- This allows the FE to scale/migrate to cloud or a desktop app with a proper DB without a lot of rewriting.
+
+The 'API' is also versioned in code, to protect against stored schema drift 
 
 # Enhancements to requriements
 - Trending repos
@@ -87,6 +104,10 @@ Any AI output was reviewed beforehand
 - Display Repo Starring rate in the last 6 month as a line chart
 - SearchField and Keyboard Shortcuts
 - Storybook integration (the website was largely development Component-first)
+- Responsive design
+  - This Enable Mobile Builds, for IOS and Android using capacitor
+- NotFound Page
+- Many more QoF enhancements I probably forgot to mention
 
 # Design Decisions
 - Not using something like `Zod`: Github API is versioned so no need to validate schema on runtime, using it adds burden to performance computing schema at runtime.

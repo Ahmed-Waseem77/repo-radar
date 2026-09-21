@@ -1,47 +1,28 @@
 import { useState } from 'react'
 import type { MouseEvent } from 'react'
-import {
-    Box,
-    Button as MuiButton,
-    ButtonGroup as MuiButtonGroup,
-    Divider,
-    FormControl,
-    IconButton,
-    InputLabel,
-    MenuItem,
-    Select,
-    Skeleton,
-    Table,
-    TableCell,
-    TablePagination,
-    Tooltip,
-    Typography,
-    Stack,
-    ToggleButton,
-    ToggleButtonGroup,
-} from '@mui/material'
-import { useColorScheme, useTheme } from '@mui/material/styles'
-import { LineChart } from '@mui/x-charts/LineChart'
-import { Button, Carousel, getRepoKey, InlineCode, NoSearchIcon, Pill, RepoOverview, RepoOverviewCompact, TextLink } from '@radar-repo/radar-repo-lib'
-import { MuiMarkdown, getOverrides } from 'mui-markdown'
-import type { Overrides } from 'mui-markdown'
-import { Highlight, themes as prismThemes } from 'prism-react-renderer'
-import type { PrismTheme } from 'prism-react-renderer'
+import { Box, Button as MuiButton, ButtonGroup as MuiButtonGroup, Slide, Stack, Tooltip } from '@mui/material'
+import { Button, getRepoKey, RepoOverview, RepoOverviewCompact } from '@radar-repo/radar-repo-lib'
 import BookmarkTwoToneIcon from '@mui/icons-material/BookmarkTwoTone'
 import ArticleTwoToneIcon from '@mui/icons-material/ArticleTwoTone'
 import BugReportTwoToneIcon from '@mui/icons-material/BugReportTwoTone'
 import CallMergeTwoToneIcon from '@mui/icons-material/CallMergeTwoTone'
-import CancelTwoToneIcon from '@mui/icons-material/CancelTwoTone'
-import ChatBubbleOutlineTwoToneIcon from '@mui/icons-material/ChatBubbleOutlineTwoTone'
-import CheckCircleTwoToneIcon from '@mui/icons-material/CheckCircleTwoTone'
-import RadioButtonUncheckedTwoToneIcon from '@mui/icons-material/RadioButtonUncheckedTwoTone'
-import RefreshTwoToneIcon from '@mui/icons-material/RefreshTwoTone'
 import TimelineTwoToneIcon from '@mui/icons-material/TimelineTwoTone'
-import { useIssues, useLabels, useLatestRelease, usePullRequests, useReadme, useStarHistory } from '../hooks/api'
+import { useLatestRelease } from '../hooks/api'
+import { useNarrowScreen } from '../hooks/useNarrowScreen'
 import type { SidePanelState } from '../hooks/useSidePanelRepos'
-import type { IssueDto } from '../api/github/getIssues'
-import type { PullRequestDto } from '../api/github/getPullRequests'
 import type { RepoDto } from '../api/github/mappers'
+import {
+    IssuesSection,
+    PullRequestsSection,
+    ReadmeSection,
+    RefreshButton,
+    SIDE_PANEL_WIDTH,
+    SidePanel,
+    StarHistorySection,
+    getStarHistoryPeriod,
+    getStarsTabLabel,
+} from './RepoDetail'
+import type { StarHistoryPeriod } from './RepoDetail'
 
 type DetailTab = 'readme' | 'issues' | 'prs' | 'stars'
 
@@ -64,598 +45,39 @@ export interface RepoDetailViewProps {
     // changes `repo` above
     sidePanelState: SidePanelState
     // forces a fresh fetch of `repo` itself (RepoDetailPage's own getRepo call), for a session
-    // that's been open long enough for its cached/originally-fetched data to go stale
+    // that's been open long enough for its cached/originally-fetched data to go stale. Wired to
+    // an actual button here only on a wide screen - on a narrow one the same control lives in
+    // App.tsx's AppBar instead (see RepoDetailPage's onRefreshControlsChange).
     onRefresh: () => void
     refreshing: boolean
+    // narrow-screen-only, already fully resolved by RepoDetailPage (narrow && the back button's
+    // own toggle && there's actually a query to show results for) - this is what drives the side
+    // panel showing as an overlay at all. On a wide screen the panel is a permanent column
+    // regardless, so this only matters in the narrow branch.
+    searchPanelVisible: boolean
+    // dismisses the overlay from a backdrop tap without leaving this page - App.tsx's own
+    // setSearch(''), threaded down through RepoDetailPage. The AppBar's own back button/Escape
+    // reach the same outcome through App.tsx's handleBack instead (see there).
+    onClearSearch: () => void
 }
 
-const SIDE_PANEL_WIDTH = 300
-const SIDE_PANEL_LOADING_COUNT = 6
-
-// same NoSearchIcon + dimmed message convention as the tab sections' own EmptyState, just sized
-// down to actually fit this 300px-wide column instead of the main content area's full width.
-function SidePanelMessage({ message }: { message: string }) {
-    return (
-        <Box sx={{ width: SIDE_PANEL_WIDTH, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, px: 2, py: 4, textAlign: 'center' }}>
-            <NoSearchIcon sx={{ width: 120, height: 'auto' }} />
-            <Typography variant="body2" color='textDimmedInverted'>{message}</Typography>
-        </Box>
-    )
-}
-
-// dummy-but-complete RepoOverviewDto fields, same convention Homepage/TrackedRepos already use
-// for their own loading placeholder cards - RepoOverviewCompact's `loading` prop only skips
-// RENDERING these, it still requires the full shape.
-function SidePanelLoading() {
-    return (
-        <>
-            {Array.from({ length: SIDE_PANEL_LOADING_COUNT }, (_, index) => (
-                <RepoOverviewCompact
-                    key={`side-panel-loading-${index}`}
-                    title={`loading-${index}`}
-                    owner=""
-                    url=""
-                    ownerUrl=""
-                    description=""
-                    lastCommit={{ hash: '', date: '', developerName: '', url: '' }}
-                    starCount={0}
-                    languageInfo={{ languages: [], distribution: [] }}
-                    topics={[]}
-                    archived={false}
-                    onTrack={() => {}}
-                    onDetailedView={() => {}}
-                    variant="stripped"
-                    fitContent
-                    loading
-                    tracked={false}
-                />
-            ))}
-        </>
-    )
-}
-
-// Atom One's dark/light pair - both read as neutral, cool-toned code editor chrome that doesn't
-// fight the app's own green/rust accent palette (unlike e.g. Gruvbox's warm cream/brown, which
-// would read as a mismatched, differently-hued card next to our sage/near-black backgrounds).
-const READ_ME_PRISM_THEME_LIGHT: PrismTheme = prismThemes.oneLight
-const READ_ME_PRISM_THEME_DARK: PrismTheme = prismThemes.oneDark
-
-// mui-markdown's own h1-h6 default to their literal Typography variant (h1..h6) - far too large
-// for a nested detail-view panel - and its table has no border at all. getOverrides(...) (rather
-// than the static `defaultOverrides`) is what actually wires fenced (```) blocks up to real
-// Prism syntax highlighting - it bakes the Highlight/themes/prismTheme options into the `pre`
-// mapping it returns, which `defaultOverrides` alone doesn't know about. Everything else (links,
-// lists, images, ...) keeps its normal styling. `code` reuses the lib's own InlineCode for a
-// genuine inline span only - the highlighted block's own internal rendering never goes through
-// the `code` override at all (mui-markdown renders its tokens directly), so there's no risk of
-// InlineCode's pill nesting inside the block the way it did before highlighting was added.
-// `styles` is merged into the highlighted block's own `<pre>` INLINE style, after (so it wins
-// over) the prism theme's own background/text-color style - the one piece of that theme this
-// swaps out, without touching its actual token colors.
-function buildReadmeOverrides(prismTheme: PrismTheme, codeBlockBackground: string): Overrides {
-    return {
-        ...getOverrides({
-            Highlight,
-            themes: prismThemes,
-            prismTheme,
-            hideLineNumbers: true,
-            styles: { backgroundColor: codeBlockBackground },
-        }),
-        h1: { component: Typography, props: { variant: 'h5', component: 'h1', color: 'primary', sx: { fontWeight: 700 } } },
-        h2: { component: Typography, props: { variant: 'h6', component: 'h2', color: 'primary', sx: { fontWeight: 700 } } },
-        h3: { component: Typography, props: { variant: 'subtitle1', component: 'h3', color: 'primary', sx: { fontWeight: 700 } } },
-        h4: { component: Typography, props: { variant: 'subtitle2', component: 'h4', color: 'primary', sx: { fontWeight: 700 } } },
-        h5: { component: Typography, props: { variant: 'body1', component: 'h5', color: 'primary', sx: { fontWeight: 700 } } },
-        h6: { component: Typography, props: { variant: 'body2', component: 'h6', color: 'primary', sx: { fontWeight: 700 } } },
-        table: { component: Table, props: { sx: { border: '1px solid', borderColor: 'divider', borderCollapse: 'collapse' } } },
-        th: { component: TableCell, props: { sx: { border: '1px solid', borderColor: 'divider' } } },
-        td: { component: TableCell, props: { sx: { border: '1px solid', borderColor: 'divider' } } },
-        code: { component: InlineCode },
-    }
-}
-
-// only mounted while the README tab is active (see the render below), which is itself what makes
-// this "fetch on click" - useReadme fires its request on mount, not before.
-function ReadmeSection({ owner, name }: { owner: string; name: string }) {
-    const { data: readme, loading } = useReadme({ owner, name })
-    // mirrors ColorModeToggle's own resolution - mode === 'system' doesn't say which way it's
-    // currently resolved, systemMode (only populated in that case) carries the OS-level choice.
-    const { mode, systemMode } = useColorScheme()
-    const isDark = (mode === 'system' ? systemMode : mode) === 'dark'
-    const theme = useTheme()
-
-    if (loading) {
-        return (
-            <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0, py: 3 }}>
-                <Skeleton variant="text" width="45%" sx={{ fontSize: '1.75rem' }} />
-                <Skeleton variant="text" width="95%" />
-                <Skeleton variant="text" width="88%" />
-                <Skeleton variant="text" width="92%" />
-                <Skeleton variant="rounded" height={120} sx={{ width: '100%' }} />
-                <Skeleton variant="text" width="70%" />
-                <Skeleton variant="text" width="85%" />
-                <Skeleton variant="text" width="60%" />
-            </Stack>
-        )
-    }
-
-    if (!readme) {
-        return (
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, py: 4 }}>
-                <NoSearchIcon sx={{ width: 200, height: 'auto' }} />
-                <Typography variant="body1" color='textDimmedInverted'>This repository doesn&apos;t have a README.</Typography>
-            </Box>
-        )
-    }
-
-    // a raw CSS value (fed into the highlighted block's own inline `style`, not an sx prop) needs
-    // the vars-or-fallback form, same as NotFoundPage's box-shadow color.
-    const paperBackground = theme.vars?.palette.background.paper ?? theme.palette.background.paper
-    const readmeOverrides = buildReadmeOverrides(isDark ? READ_ME_PRISM_THEME_DARK : READ_ME_PRISM_THEME_LIGHT, paperBackground)
-
-    return (
-        <Box sx={{ flex: 1, minHeight: 0, px: 2, py: 2 }}>
-            <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden'}}>
-                <Box sx={{ px: 2, py: 1, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="caption" component="code" color="text.secondary">
-                        README.md
-                    </Typography>
-                </Box>
-                <Box
-                    sx={(theme) => ({
-                        px: 3,
-                        py: 2.5,
-                        '& h1, & h2, & h3, & h4, & h5, & h6': {
-                            marginTop: theme.spacing(3),
-                            marginBottom: theme.spacing(1.5),
-                        },
-                        // `pre` isn't in this list - the highlighted block below already gets its
-                        // own `my: 2` from mui-markdown's own wrapper, adding one here too would
-                        // just add extra blank space inside its rounded/bordered card.
-                        '& p, & ul, & ol, & table, & blockquote, & hr': {
-                            marginTop: 0,
-                            marginBottom: theme.spacing(2),
-                        },
-                        '& li': {
-                            marginBottom: theme.spacing(0.5),
-                        },
-                        '& > *:first-of-type': {
-                            marginTop: 0,
-                        },
-                    })}
-                >
-                    <MuiMarkdown overrides={readmeOverrides}>{readme}</MuiMarkdown>
-                </Box>
-            </Box>
-        </Box>
-    )
-}
-
-const ISSUES_PER_PAGE_OPTIONS = [10, 25, 50]
-
-// same NoSearchIcon + dimmed message convention as ReadmeSection's own not-found state - covers
-// both "something went wrong" and "nothing matches this filter" with one message. Shared by
-// IssuesSection and PullRequestsSection - identical need, no per-tab logic in it.
-function EmptyState({ message }: { message: string }) {
-    return (
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, py: 4 }}>
-            <NoSearchIcon sx={{ width: 200, height: 'auto' }} />
-            <Typography variant="body1" color='textDimmedInverted'>{message}</Typography>
-        </Box>
-    )
-}
-
-function IssueRow({ issue }: { issue: IssueDto }) {
-    const StateIcon = issue.state === 'open' ? RadioButtonUncheckedTwoToneIcon : CheckCircleTwoToneIcon
-
-    return (
-        <Stack direction="row" spacing={1.5} sx={{ px: 2, py: 1.5, alignItems: 'flex-start' }}>
-            <StateIcon fontSize="small" color={issue.state === 'open' ? 'success' : 'secondary'} sx={{ mt: 0.25, flexShrink: 0 }} />
-            <Stack spacing={0.5} sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}>
-                    <TextLink href={issue.url} variant="body2" sx={{ fontWeight: 600 }}>
-                        {issue.title}
-                    </TextLink>
-                    <Typography variant="caption" color='textDimmedInverted'>#{issue.number}</Typography>
-                </Stack>
-                {issue.labels.length > 0 && (
-                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
-                        {issue.labels.map((label) => (
-                            <Pill key={label.name} label={label.name} color={`#${label.color}`} size="small" />
-                        ))}
-                    </Stack>
-                )}
-                <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                    <Typography variant="caption" color='textDimmedInverted'>
-                        opened {issue.createdAt}
-                        {issue.authorLogin && (
-                            <>
-                                {' by '}
-                                <TextLink href={issue.authorUrl ?? issue.url}>{issue.authorLogin}</TextLink>
-                            </>
-                        )}
-                    </Typography>
-                    {issue.commentCount > 0 && (
-                        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                            <ChatBubbleOutlineTwoToneIcon color="disabled" sx={{ fontSize: 14 }} />
-                            <Typography variant="caption" color='textDimmedInverted'>{issue.commentCount}</Typography>
-                        </Stack>
-                    )}
-                </Stack>
-            </Stack>
-        </Stack>
-    )
-}
-
-// only mounted while the Issues tab is active (same "fetch on click" reasoning as ReadmeSection).
-// Backed by GET /repos/{owner}/{repo}/issues (see getIssues) rather than GET /search/issues, on
-// purpose - PullRequestsSection hits this exact same endpoint independently (see getPullRequests
-// for why it's a separate request rather than reusing this one's leftovers).
-function IssuesSection({ owner, name }: { owner: string; name: string }) {
-    const [state, setState] = useState<'open' | 'closed'>('open')
-    const [label, setLabel] = useState('')
-    const [page, setPage] = useState(0)
-    const [rowsPerPage, setRowsPerPage] = useState(ISSUES_PER_PAGE_OPTIONS[0])
-
-    const { data: labels } = useLabels({ owner, name })
-    const { data, loading, error } = useIssues({
-        owner,
-        name,
-        state,
-        label: label || undefined,
-        page: page + 1,
-        perPage: rowsPerPage,
-    })
-
-    return (
-        // same px/py:2 outer inset as ReadmeSection's own wrapper - lines this card's edges up
-        // with the button-group/track-button row's `px: 2` above it. The toolbar, its Divider,
-        // the row dividers and the pagination footer all now live INSIDE this bordered card
-        // instead of directly in the flex column - a plain <Divider/> has no margin of its own,
-        // so it used to render edge-to-edge across the whole column instead of stopping at this
-        // inset, which is what threw it out of line with that row.
-        <Box sx={{ flex: 1, minHeight: 0, px: 2, py: 2 }}>
-            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-                <Stack direction="row" spacing={2} sx={{ px: 2, py: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <ToggleButtonGroup
-                        size="small"
-                        exclusive
-                        value={state}
-                        onChange={(_event, value: 'open' | 'closed' | null) => {
-                            // an exclusive ToggleButtonGroup fires with `null` when the already-active
-                            // button is clicked again - ignore that rather than clearing the filter.
-                            if (value === null) return
-                            setState(value)
-                            setPage(0)
-                        }}
-                    >
-                        <ToggleButton value="open">
-                            <RadioButtonUncheckedTwoToneIcon fontSize="small" sx={{ mr: 0.75 }} />
-                            Open
-                        </ToggleButton>
-                        <ToggleButton value="closed">
-                            <CheckCircleTwoToneIcon fontSize="small" sx={{ mr: 0.75 }} />
-                            Closed
-                        </ToggleButton>
-                    </ToggleButtonGroup>
-                    {/* only shown once labels have actually loaded and the repo has at least one -
-                        an empty dropdown would just be a filter for something that can't ever match. */}
-                    {labels && labels.length > 0 && (
-                        <FormControl size="small" sx={{ minWidth: 200 }}>
-                            <InputLabel id={`${owner}-${name}-issue-label-filter`}>Label</InputLabel>
-                            <Select
-                                labelId={`${owner}-${name}-issue-label-filter`}
-                                label="Label"
-                                value={label}
-                                onChange={(event) => {
-                                    setLabel(event.target.value)
-                                    setPage(0)
-                                }}
-                            >
-                                <MenuItem value="">All labels</MenuItem>
-                                {labels.map((issueLabel) => (
-                                    <MenuItem key={issueLabel.name} value={issueLabel.name}>
-                                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                                            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: `#${issueLabel.color}`, flexShrink: 0 }} />
-                                            <span>{issueLabel.name}</span>
-                                        </Stack>
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    )}
-                </Stack>
-                <Divider />
-                <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-                    {error ? (
-                        <EmptyState message={`Something went wrong loading issues: ${error.message}`} />
-                    ) : loading || !data ? (
-                        <Stack divider={<Divider />}>
-                            {Array.from({ length: rowsPerPage }, (_, index) => (
-                                <Stack key={index} direction="row" spacing={1.5} sx={{ px: 2, py: 1.5, alignItems: 'center' }}>
-                                    <Skeleton variant="circular" width={20} height={20} />
-                                    <Skeleton variant="text" sx={{ flex: 1 }} />
-                                </Stack>
-                            ))}
-                        </Stack>
-                    ) : data.items.length === 0 ? (
-                        <EmptyState message={`No ${state} issues found${label ? ` labeled "${label}"` : ''}.`} />
-                    ) : (
-                        <Stack divider={<Divider />}>
-                            {data.items.map((issue) => (
-                                <IssueRow key={issue.id} issue={issue} />
-                            ))}
-                        </Stack>
-                    )}
-                </Box>
-                <TablePagination
-                    component="div"
-                    count={data?.totalCount ?? 0}
-                    page={page}
-                    rowsPerPage={rowsPerPage}
-                    rowsPerPageOptions={ISSUES_PER_PAGE_OPTIONS}
-                    onPageChange={(_event, newPage) => setPage(newPage)}
-                    onRowsPerPageChange={(event) => {
-                        setRowsPerPage(Number(event.target.value))
-                        setPage(0)
-                    }}
-                    // flat 16px on both sides (rather than the toolbar's own default gutters,
-                    // which are also asymmetric between sides - see below) - this card's own
-                    // border already establishes the outer margin, so this just needs to match
-                    // the same px:2 content inset the toolbar/rows above use.
-                    sx={{ '& .MuiTablePagination-toolbar': { pl: 2, pr: 2 } }}
-                />
-            </Box>
-        </Box>
-    )
-}
-
-// GitHub only tracks open/closed on a PR, same as any issue - "merged" isn't a state, it's
-// state === 'closed' with merged_at set (see getPullRequests' mapPullRequest), so the per-row
-// status shown here is a 3-way split even though the section's own Open/Closed toggle below is
-// still 2-way, same as GitHub's own PR list UI.
-function PullRequestStatusIcon({ status }: { status: PullRequestDto['status'] }) {
-    if (status === 'merged') return <CallMergeTwoToneIcon fontSize="small" color="info" sx={{ mt: 0.25, flexShrink: 0 }} />
-    if (status === 'closed') return <CancelTwoToneIcon fontSize="small" color="error" sx={{ mt: 0.25, flexShrink: 0 }} />
-    return <RadioButtonUncheckedTwoToneIcon fontSize="small" color="success" sx={{ mt: 0.25, flexShrink: 0 }} />
-}
-
-// mirrors IssueRow - same fields (title/number/labels/author/comments), just a 3-way status icon
-// instead of IssueRow's 2-way one, and no separate label filter above it (not asked for on this tab).
-function PullRequestRow({ pullRequest }: { pullRequest: PullRequestDto }) {
-    return (
-        <Stack direction="row" spacing={1.5} sx={{ px: 2, py: 1.5, alignItems: 'flex-start' }}>
-            <PullRequestStatusIcon status={pullRequest.status} />
-            <Stack spacing={0.5} sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}>
-                    <TextLink href={pullRequest.url} variant="body2" sx={{ fontWeight: 600 }}>
-                        {pullRequest.title}
-                    </TextLink>
-                    <Typography variant="caption" color='textDimmedInverted'>#{pullRequest.number}</Typography>
-                </Stack>
-                {pullRequest.labels.length > 0 && (
-                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', rowGap: 0.5 }}>
-                        {pullRequest.labels.map((label) => (
-                            <Pill key={label.name} label={label.name} color={`#${label.color}`} size="small" />
-                        ))}
-                    </Stack>
-                )}
-                <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                    <Typography variant="caption" color='textDimmedInverted'>
-                        opened {pullRequest.createdAt}
-                        {pullRequest.authorLogin && (
-                            <>
-                                {' by '}
-                                <TextLink href={pullRequest.authorUrl ?? pullRequest.url}>{pullRequest.authorLogin}</TextLink>
-                            </>
-                        )}
-                    </Typography>
-                    {pullRequest.commentCount > 0 && (
-                        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                            <ChatBubbleOutlineTwoToneIcon color="disabled" sx={{ fontSize: 14 }} />
-                            <Typography variant="caption" color='textDimmedInverted'>{pullRequest.commentCount}</Typography>
-                        </Stack>
-                    )}
-                </Stack>
-            </Stack>
-        </Stack>
-    )
-}
-
-// only mounted while the Pull Requests tab is active (same "fetch on click" reasoning as
-// ReadmeSection/IssuesSection). Structurally a copy of IssuesSection (same card/toolbar/
-// pagination shell) - kept as a separate component rather than a shared one since the two
-// diverge in real ways (label filter, 2-way vs 3-way row status) that would otherwise need to be
-// parameterized right back into near-equivalent complexity.
-function PullRequestsSection({ owner, name }: { owner: string; name: string }) {
-    const [state, setState] = useState<'open' | 'closed'>('open')
-    const [page, setPage] = useState(0)
-    const [rowsPerPage, setRowsPerPage] = useState(ISSUES_PER_PAGE_OPTIONS[0])
-
-    const { data, loading, error } = usePullRequests({
-        owner,
-        name,
-        state,
-        page: page + 1,
-        perPage: rowsPerPage,
-    })
-
-    return (
-        <Box sx={{ flex: 1, minHeight: 0, px: 2, py: 2 }}>
-            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-                <Stack direction="row" spacing={2} sx={{ px: 2, py: 1.5, alignItems: 'center' }}>
-                    <ToggleButtonGroup
-                        size="small"
-                        exclusive
-                        value={state}
-                        onChange={(_event, value: 'open' | 'closed' | null) => {
-                            // an exclusive ToggleButtonGroup fires with `null` when the already-active
-                            // button is clicked again - ignore that rather than clearing the filter.
-                            if (value === null) return
-                            setState(value)
-                            setPage(0)
-                        }}
-                    >
-                        <ToggleButton value="open">
-                            <RadioButtonUncheckedTwoToneIcon fontSize="small" sx={{ mr: 0.75 }} />
-                            Open
-                        </ToggleButton>
-                        {/* a neutral "cancel" glyph rather than IssueSection's checkmark - this
-                            bucket mixes merged AND closed-unmerged PRs, so a checkmark (implying
-                            a single successful resolution) would be misleading here specifically;
-                            each row's own PullRequestStatusIcon is what actually distinguishes them. */}
-                        <ToggleButton value="closed">
-                            <CancelTwoToneIcon fontSize="small" sx={{ mr: 0.75 }} />
-                            Closed
-                        </ToggleButton>
-                    </ToggleButtonGroup>
-                </Stack>
-                <Divider />
-                <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-                    {error ? (
-                        <EmptyState message={`Something went wrong loading pull requests: ${error.message}`} />
-                    ) : loading || !data ? (
-                        <Stack divider={<Divider />}>
-                            {Array.from({ length: rowsPerPage }, (_, index) => (
-                                <Stack key={index} direction="row" spacing={1.5} sx={{ px: 2, py: 1.5, alignItems: 'center' }}>
-                                    <Skeleton variant="circular" width={20} height={20} />
-                                    <Skeleton variant="text" sx={{ flex: 1 }} />
-                                </Stack>
-                            ))}
-                        </Stack>
-                    ) : data.items.length === 0 ? (
-                        <EmptyState message={`No ${state} pull requests found.`} />
-                    ) : (
-                        <Stack divider={<Divider />}>
-                            {data.items.map((pullRequest) => (
-                                <PullRequestRow key={pullRequest.id} pullRequest={pullRequest} />
-                            ))}
-                        </Stack>
-                    )}
-                </Box>
-                <TablePagination
-                    component="div"
-                    count={data?.totalCount ?? 0}
-                    page={page}
-                    rowsPerPage={rowsPerPage}
-                    rowsPerPageOptions={ISSUES_PER_PAGE_OPTIONS}
-                    onPageChange={(_event, newPage) => setPage(newPage)}
-                    onRowsPerPageChange={(event) => {
-                        setRowsPerPage(Number(event.target.value))
-                        setPage(0)
-                    }}
-                    sx={{ '& .MuiTablePagination-toolbar': { pl: 2, pr: 2 } }}
-                />
-            </Box>
-        </Box>
-    )
-}
-
-const STAR_HISTORY_CHART_HEIGHT = 440
-
-// below this age there's no real trend to show yet, so the tab is disabled entirely rather than
-// rendering a chart of one or two data points
-const STAR_HISTORY_MIN_AGE_MONTHS = 1
-// [MIN_AGE, ADAPTIVE_CEILING) is a repo old enough to show SOMETHING but younger than the default
-// window - the button/title show that shorter, actual period instead of claiming 6 months' worth
-// of trend exists when it doesn't (the chart itself would already just show what's actually
-// there regardless, this is purely about not mislabeling it)
-const STAR_HISTORY_ADAPTIVE_CEILING_MONTHS = 3
-const STAR_HISTORY_DEFAULT_PERIOD_MONTHS = 6
-const DAYS_PER_MONTH = 30
-
-interface StarHistoryPeriod {
-    disabled: boolean
-    months: number
-}
-
-// createdAt is optional on RepoDto (see RepoOverviewDto) - missing it (a loading placeholder,
-// somewhere that never populated it) is treated as "assume old enough", not as young, since
-// disabling the tab or mislabeling its period on missing data would be a worse default.
-function getStarHistoryPeriod(createdAt: string | undefined): StarHistoryPeriod {
-    if (!createdAt) return { disabled: false, months: STAR_HISTORY_DEFAULT_PERIOD_MONTHS }
-
-    const ageInDays = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)
-    const ageInMonths = Math.floor(ageInDays / DAYS_PER_MONTH)
-
-    if (ageInMonths < STAR_HISTORY_MIN_AGE_MONTHS) return { disabled: true, months: ageInMonths }
-    if (ageInMonths < STAR_HISTORY_ADAPTIVE_CEILING_MONTHS) return { disabled: false, months: ageInMonths }
-    return { disabled: false, months: STAR_HISTORY_DEFAULT_PERIOD_MONTHS }
-}
-
-function getStarsTabLabel(period: StarHistoryPeriod): string {
-    return period.disabled ? 'Repo too Young for Star History' : `Stars (${period.months}mo)`
-}
-
-// only mounted while the Star History tab is active (same "fetch on click" reasoning as the other
-// tabs, and only reachable at all once getStarHistoryPeriod says this repo isn't too young).
-// Backed by GET /repos/{owner}/{repo}/stargazers/history (see getStarHistory) - shows a weekly
-// RATE (stars gained that week), not a cumulative running total - see that file for why.
-// `periodMonths` only affects the title text here, not the fetch itself - getStarHistory always
-// requests up to its own max window and GitHub naturally returns less for a younger repo, so the
-// chart already shows the right data regardless; this is purely about not mislabeling it.
-function StarHistorySection({ owner, name, periodMonths }: { owner: string; name: string; periodMonths: number }) {
-    const theme = useTheme()
-    const { data, loading, error } = useStarHistory({ owner, name })
-
-    if (error) {
-        return <EmptyState message={`Something went wrong loading star history: ${error.message}`} />
-    }
-
-    if (loading || !data) {
-        return (
-            <Box sx={{ flex: 1, minHeight: 0, px: 2, py: 2 }}>
-                <Skeleton variant="text" width="45%" sx={{ fontSize: '1.25rem', mb: 1 }} />
-                <Skeleton variant="rounded" sx={{ width: '100%', height: STAR_HISTORY_CHART_HEIGHT }} />
-            </Box>
-        )
-    }
-
-    if (data.length === 0) {
-        return <EmptyState message="This repository has no stars yet." />
-    }
-
-    return (
-        <Box sx={{ flex: 1, minHeight: 0, px: 2, py: 2, overflow: 'auto' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                Stars gained per week - last {periodMonths} month{periodMonths === 1 ? '' : 's'}
-            </Typography>
-            <LineChart
-                height={STAR_HISTORY_CHART_HEIGHT}
-                series={[
-                    {
-                        data: data.map((point) => point.starsGained),
-                        label: 'Stars per week',
-                        color: theme.vars?.palette.secondary.main ?? theme.palette.secondary.main,
-                        area: true,
-                        showMark: true,
-                        curve: 'monotoneX',
-                    },
-                ]}
-                xAxis={[
-                    {
-                        data: data.map((point) => new Date(point.date)),
-                        scaleType: 'time',
-                        label: 'Week of',
-                        valueFormatter: (date: Date) => date.toLocaleDateString(),
-                    },
-                ]}
-                yAxis={[{ label: 'Stars / week', min: 0 }]}
-                grid={{ horizontal: true }}
-                // tonal, matching the rest of the app: a solid line/marks in the series color (set
-                // above), but the area fill - normally rendered at full, solid opacity - is faded
-                // down to a translucent tint of that same color instead of a flat fill.
-                sx={{ '& .MuiLineChart-area': { fillOpacity: 0.18 } }}
-                hideLegend
-            />
-        </Box>
-    )
+// shared by both layouts below - whichever section is active, rendered exactly the same way
+// regardless of screen width (only how its tab gets SELECTED differs - a labeled ButtonGroup on
+// a wide screen, a thin icon-only one docked to the bottom on a narrow one).
+function ActiveTabSection({ activeTab, repo, starsPeriod }: { activeTab: DetailTab; repo: RepoDto; starsPeriod: StarHistoryPeriod }) {
+    if (activeTab === 'readme') return <ReadmeSection owner={repo.owner} name={repo.title} />
+    if (activeTab === 'issues') return <IssuesSection owner={repo.owner} name={repo.title} />
+    if (activeTab === 'prs') return <PullRequestsSection owner={repo.owner} name={repo.title} />
+    return <StarHistorySection owner={repo.owner} name={repo.title} periodMonths={starsPeriod.months} />
 }
 
 // the back-chevron / Escape affordance for closing this view lives in App.tsx's AppBar (start
 // slot, before the logo) instead of here - keeps the "how do I close this" answer in one place
-// regardless of which page opened it, rather than duplicating a back button per page.
-export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState, onRefresh, refreshing }: RepoDetailViewProps) {
+// regardless of which page opened it, rather than duplicating a back button per page. On a
+// narrow screen the same is true of the search overlay below: dismissing it is exclusively an
+// AppBar-back/Escape or backdrop-tap action, never a second close button inside the overlay itself.
+export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState, onRefresh, refreshing, searchPanelVisible, onClearSearch }: RepoDetailViewProps) {
+    const narrow = useNarrowScreen()
     const { data: latestRelease } = useLatestRelease({ owner: repo.owner, name: repo.title })
     const [activeTab, setActiveTab] = useState<DetailTab>('readme')
     const starsPeriod = getStarHistoryPeriod(repo.createdAt)
@@ -670,42 +92,88 @@ export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState, o
         setActiveTab('readme')
     }
 
+    const selectedRepoKey = getRepoKey(repo)
+
+    if (narrow) {
+        return (
+            <Box sx={{ position: 'relative', flex: 1, minHeight: 0, maxHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 0, px: 0, py: 0 }}>
+                    <Box sx={{ flexShrink: 0 }}>
+                        <RepoOverviewCompact
+                            {...repo}
+                            loading={false}
+                            tracked={tracked}
+                            onTrack={onToggleTrack}
+                            onDetailedView={() => {}}
+                            disableDetailedView
+                            width="100%"
+                        />
+                    </Box>
+                    <ActiveTabSection activeTab={activeTab} repo={repo} starsPeriod={starsPeriod} />
+                </Box>
+                {/* thin, icon-only tab bar docked to the bottom of this view - a plain flex
+                    sibling of the scrollable content above (not position:fixed), so it always
+                    sits flush against the search bar below it (App.tsx's own bottom AppBar,
+                    rendered as the next flex sibling in turn) with no gap between the two: same
+                    px:2 horizontal inset as that Toolbar's own default gutters, no bottom margin
+                    of its own for that same reason. */}
+                <Stack
+                    direction="row"
+                    sx={{ flexShrink: 0, px: 2, py: 0.75, justifyContent: 'center', borderTop: '1px solid', borderColor: 'divider' }}
+                >
+                    <MuiButtonGroup variant="outlined" size="small">
+                        {TABS.map((tab) => (
+                            <Tooltip key={tab.id} title={tab.label}>
+                                <MuiButton
+                                    variant={activeTab === tab.id ? 'contained' : 'outlined'}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    aria-label={tab.label}
+                                    sx={{ minWidth: 0, px: 1.5 }}
+                                >
+                                    <tab.icon fontSize="small" />
+                                </MuiButton>
+                            </Tooltip>
+                        ))}
+                        <Tooltip title={getStarsTabLabel(starsPeriod)}>
+                            {/* a disabled MuiButton wouldn't fire the hover events Tooltip needs
+                                to show itself - wrapping in a span (which stays interactive
+                                either way) is the standard way around that. */}
+                            <span>
+                                <MuiButton
+                                    variant={activeTab === 'stars' ? 'contained' : 'outlined'}
+                                    onClick={() => setActiveTab('stars')}
+                                    disabled={starsPeriod.disabled}
+                                    aria-label={getStarsTabLabel(starsPeriod)}
+                                    sx={{ minWidth: 0, px: 1.5 }}
+                                >
+                                    <TimelineTwoToneIcon fontSize="small" />
+                                </MuiButton>
+                            </span>
+                        </Tooltip>
+                    </MuiButtonGroup>
+                </Stack>
+                {/* dims the content behind the overlay and, tapped, dismisses it - "tapping
+                    elsewhere" from the design. Only mounted while the overlay is open, so it
+                    never eats clicks the rest of the time. */}
+                {searchPanelVisible && (
+                    <Box onClick={onClearSearch} sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0, 0, 0, 0.4)', zIndex: 1 }} />
+                )}
+                {/* slides in from the left edge over the content above; slides back out the same
+                    way when dismissed (backdrop tap, or the AppBar's own back button/Escape via
+                    App.tsx's handleBack - see there for why that toggles this rather than
+                    immediately closing this whole page). */}
+                <Slide direction="right" in={searchPanelVisible} mountOnEnter unmountOnExit>
+                    <Box sx={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: SIDE_PANEL_WIDTH, zIndex: 2, bgcolor: 'background.default', boxShadow: 6, overflow: 'auto' }}>
+                        <SidePanel sidePanelState={sidePanelState} selectedRepoKey={selectedRepoKey} />
+                    </Box>
+                </Slide>
+            </Box>
+        )
+    }
+
     return (
         <Stack direction="row" spacing={2} sx={{ flex: 1, minHeight: 0, maxHeight: '100%', maxWidth: '100%', px: 2, py: 2 }}>
-            {/* `width` (a real Carousel prop, not just wrapping it in a sized Box) is required here,
-                not optional: this is a 'grid' layout, and a plain CSS `width: fit-content` on a
-                wrapping flex container sizes from its UNWRAPPED max-content width (every card side
-                by side in one line), not the actually-wrapped rendered width - so it blows out far
-                wider than one card. `flexShrink: 0` (set internally whenever `width` is passed) is
-                what actually keeps this fixed regardless of how little/much room the row beside it wants.
-                error/empty/notFound render a plain sized Box INSTEAD of the Carousel, rather than
-                feeding it a non-card child - Carousel's 'grid' layout assumes card-shaped children,
-                so a single big message box doesn't measure/lay out the same way a card would. */}
-            {sidePanelState.status === 'error' ? (
-                <SidePanelMessage message={`Something went wrong loading repos: ${sidePanelState.error.message}`} />
-            ) : sidePanelState.status === 'empty' || sidePanelState.status === 'notFound' ? (
-                <SidePanelMessage message={sidePanelState.message} />
-            ) : (
-                <Carousel width={SIDE_PANEL_WIDTH} orientation="vertical" layout="grid" autoScroll={false} gutter={2} divider>
-                    {sidePanelState.status === 'loading' ? (
-                        <SidePanelLoading />
-                    ) : (
-                        sidePanelState.repos.map((sidePanelRepo) => {
-                            const isSelected = getRepoKey(sidePanelRepo) === getRepoKey(repo)
-                            return (
-                                <RepoOverviewCompact
-                                    key={getRepoKey(sidePanelRepo)}
-                                    {...sidePanelRepo}
-                                    variant="stripped"
-                                    fitContent
-                                    hideDescription={isSelected}
-                                    selected={isSelected}
-                                />
-                            )
-                        })
-                    )}
-                </Carousel>
-            )}
+            <SidePanel sidePanelState={sidePanelState} selectedRepoKey={selectedRepoKey} />
             <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, maxHeight: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {/* a plain (non-flex) wrapper, not a direct flex item of the column above - RepoOverview
                     sets its own internal `flex` shorthand for its OTHER usage (a row inside
@@ -757,25 +225,7 @@ export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState, o
                                     </Box>
                                 </MuiButton>
                             </MuiButtonGroup>
-                            <Tooltip title={refreshing ? 'Refreshing...' : 'Refresh repo details'}>
-                                {/* a disabled IconButton wouldn't fire the hover events Tooltip
-                                    needs to show itself - wrapping in a span (which stays
-                                    interactive either way) is the standard way around that. */}
-                                <span>
-                                    <IconButton size="small" onClick={onRefresh} disabled={refreshing} aria-label="Refresh repo details">
-                                        <RefreshTwoToneIcon
-                                            fontSize="small"
-                                            sx={{
-                                                animation: refreshing ? 'spin 1s linear infinite' : 'none',
-                                                '@keyframes spin': {
-                                                    from: { transform: 'rotate(0deg)' },
-                                                    to: { transform: 'rotate(360deg)' },
-                                                },
-                                            }}
-                                        />
-                                    </IconButton>
-                                </span>
-                            </Tooltip>
+                            <RefreshButton onRefresh={onRefresh} refreshing={refreshing} />
                         </Stack>
                         <Button
                             label={tracked ? 'Untrack' : 'Track'}
@@ -787,10 +237,7 @@ export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState, o
                         />
                     </Stack>
                 </Box>
-                {activeTab === 'readme' && <ReadmeSection owner={repo.owner} name={repo.title} />}
-                {activeTab === 'issues' && <IssuesSection owner={repo.owner} name={repo.title} />}
-                {activeTab === 'prs' && <PullRequestsSection owner={repo.owner} name={repo.title} />}
-                {activeTab === 'stars' && <StarHistorySection owner={repo.owner} name={repo.title} periodMonths={starsPeriod.months} />}
+                <ActiveTabSection activeTab={activeTab} repo={repo} starsPeriod={starsPeriod} />
             </Box>
         </Stack>
     )

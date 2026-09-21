@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Box, Collapse, Fade, IconButton, Stack, Typography } from '@mui/material'
+import { AppBar as MuiAppBar, Box, Collapse, Fade, IconButton, Stack, Toolbar, Tooltip, Typography } from '@mui/material'
 import { TransitionGroup } from 'react-transition-group'
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import type { Theme } from '@mui/material'
-import { AppBar, Button, ColorModeToggle, InlineCode, LogoIcon } from '@radar-repo/radar-repo-lib'
+import { AppBar, Button, ColorModeToggle, InlineCode, LogoIcon, SearchField } from '@radar-repo/radar-repo-lib'
 import type { SearchFieldHint, SearchFieldScopePill } from '@radar-repo/radar-repo-lib'
 import HomeTwoToneIcon from '@mui/icons-material/HomeTwoTone'
 import BookmarksTwoToneIcon from '@mui/icons-material/BookmarksTwoTone'
 import ChevronLeftTwoToneIcon from '@mui/icons-material/ChevronLeftTwoTone'
+import { RefreshButton } from './components/RepoDetail'
+import type { RefreshButtonProps } from './components/RepoDetail'
 import { useEscapeAction } from './hooks/useEscapeAction'
 import { useKeyboardShortcut } from './hooks/useKeyboardShortcut'
+import { useNarrowScreen } from './hooks/useNarrowScreen'
 import { useRandomInterval } from './hooks/useRandomInterval'
 import { useTrackedRepos } from './hooks/api'
 import { Homepage } from './pages/Homepage'
@@ -74,6 +77,10 @@ function navButtonSx(theme: Theme, selected: boolean) {
 function App() {
   const location = useLocation()
   const navigate = useNavigate()
+  // single breakpoint driving every responsive decision in this file - see the hook itself for
+  // why 'md'. RepoDetailView reads its own copy of this same hook for its own layout, rather than
+  // this being threaded down as a prop - it's a media query, not app state.
+  const narrow = useNarrowScreen()
   const page: Page =
     location.pathname === '/tracked'
       ? 'tracked'
@@ -86,6 +93,15 @@ function App() {
   const [search, setSearch] = useState('')
   const [searchScope, setSearchScope] = useState<SearchScope>('global')
   const [selectedRepo, setSelectedRepo] = useState<RepoDto | null>(null)
+  // narrow-screen-only: whether RepoDetailView's side panel is showing as a search-results
+  // overlay (see the render below and handleBack) - a plain toggle rather than being derived
+  // straight from `search` itself, so typing a query doesn't pop the overlay open on its own;
+  // only the back button does that (see handleBack).
+  const [searchPanelOpen, setSearchPanelOpen] = useState(false)
+  // narrow-screen-only: the currently-open repo detail page's own refresh control, reported up
+  // via RepoDetailPage's onRefreshControlsChange so it can render in the AppBar's end slot
+  // (beside the theme toggle) instead of inside the page content - see the render below.
+  const [repoRefreshControls, setRepoRefreshControls] = useState<RefreshButtonProps | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
   // Set true only by the "Tracked Repos" nav button click (the literal "navigated here, haven't
@@ -116,6 +132,13 @@ function App() {
   const selectRepo = useCallback(
     (repo: RepoDto) => {
       setSelectedRepo(repo)
+      // opening a repo (from Homepage/TrackedRepos, possibly with a search still active - the
+      // query itself is left alone, it still drives the newly-opened page's own side panel/
+      // overlay content) must never itself reveal the narrow-screen search overlay - only an
+      // explicit back-button press from within the detail view does that (see handleBack).
+      // Without this, a leftover `true` from whatever repo was open before this click could
+      // otherwise carry straight over into the new one.
+      setSearchPanelOpen(false)
       navigate(`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.title)}`, { replace: page === 'repoDetail' })
     },
     [navigate, page],
@@ -135,6 +158,17 @@ function App() {
     setSelectedRepo(null)
   }
 
+  // same "adjust state during render" reset as selectedRepo above - leaving either page or an
+  // active search behind should always leave the overlay/refresh-control state behind with it,
+  // rather than a stale true/non-null value lingering for the next repo/page to accidentally
+  // inherit.
+  if ((page !== 'repoDetail' || search.trim() === '') && searchPanelOpen) {
+    setSearchPanelOpen(false)
+  }
+  if (page !== 'repoDetail' && repoRefreshControls !== null) {
+    setRepoRefreshControls(null)
+  }
+
   // undefined until the first random-interval tick, deliberately - see LogoIcon's playSignal
   // prop for why a defined value from the start would fire the animation on page load
   const [logoPlaySignal, setLogoPlaySignal] = useState<number>()
@@ -144,16 +178,23 @@ function App() {
     LOGO_ANIMATION_MAX_INTERVAL_MS,
   )
 
-  // Both Escape and the AppBar's back button (below) trigger this same "step back" action: close
-  // an open detail view if there's one, otherwise clear an active search if there's one. Detail
-  // view takes priority since it's the more "local" thing to undo first. Homepage debounces
-  // `search` itself and resets its own pagination whenever the debounced value changes, so
-  // clearing it here is all that's needed on that side.
+  // Both Escape and the AppBar's back button (below) trigger this same "step back" action.
+  // On a narrow screen with an active search while viewing a repo, that means toggling
+  // RepoDetailView's side panel open as a search-results overlay (see the render below) rather
+  // than immediately leaving the page - typing a query alone deliberately doesn't show it (see
+  // searchPanelOpen above), only this does. Pressed again, it toggles the overlay back off
+  // without leaving the page either, since the query itself is still there to act on. On a wide
+  // screen the side panel is just a permanent column, so none of this applies there - closing an
+  // open detail view stays the priority, as before, and otherwise this just clears the search.
   const hasBackAction = page === 'repoDetail' || search.trim() !== ''
   const handleBack = useCallback(() => {
+    if (narrow && page === 'repoDetail' && search.trim() !== '') {
+      setSearchPanelOpen((open) => !open)
+      return
+    }
     if (page === 'repoDetail') closeDetailView()
     else setSearch('')
-  }, [page, closeDetailView])
+  }, [narrow, page, search, closeDetailView])
 
   useEscapeAction(searchRef, [{ isActive: hasBackAction, onTrigger: handleBack }])
 
@@ -203,6 +244,37 @@ function App() {
   const searchScopePill: SearchFieldScopePill | undefined =
     searchScope === 'tracked' ? { label: 'In Tracked:' } : undefined
 
+  // shared by both SearchFields that can be mounted (the top AppBar's on a wide screen, the
+  // bottom bar's on a narrow one - see the render below) - only one of the two is ever actually
+  // rendered at a time, but the behavior itself doesn't depend on which.
+  const handleSearchFocus = () => {
+    if (page !== 'tracked' || !pendingTrackedDefaultRef.current) return
+    pendingTrackedDefaultRef.current = false
+    setSearchScope('tracked')
+    setSearch('')
+  }
+  const handleScopePillRemove = () => {
+    pendingTrackedDefaultRef.current = false
+    setSearchScope('global')
+  }
+  const goHome = () => {
+    navigate('/')
+    setSearchScope('global')
+    setSearch('')
+  }
+  const goTracked = () => {
+    // clears any leftover global query - otherwise the render-time redirect just above (global
+    // search + Tracked page -> bounce to Homepage) would immediately fire again and undo this click
+    pendingTrackedDefaultRef.current = true
+    setSearch('')
+    navigate('/tracked')
+  }
+  // stable identity so RepoDetailPage's own effect (reporting its refresh state up here) only
+  // re-fires when that state actually changes, not on every App re-render.
+  const handleRefreshControlsChange = useCallback((controls: RefreshButtonProps | null) => {
+    setRepoRefreshControls(controls)
+  }, [])
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* omitted entirely on the 404 page - it has its own full-bleed hex-grid background and
@@ -212,22 +284,15 @@ function App() {
       {page !== 'other' && (
       <AppBar
         ref={searchRef}
+        hideSearch={narrow}
         searchValue={search}
         searchHints={searchHints}
         searchScopePill={searchScopePill}
-        onSearchScopePillRemove={() => {
-          pendingTrackedDefaultRef.current = false
-          setSearchScope('global')
-        }}
+        onSearchScopePillRemove={handleScopePillRemove}
         onSearchChange={(event) => setSearch(event.target.value)}
-        onSearchFocus={() => {
-          if (page !== 'tracked' || !pendingTrackedDefaultRef.current) return
-          pendingTrackedDefaultRef.current = false
-          setSearchScope('tracked')
-          setSearch('')
-        }}
+        onSearchFocus={handleSearchFocus}
         start={
-          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+          <Stack direction="row" spacing={narrow ? 1 : 2} sx={{ alignItems: 'center' }}>
             {/* horizontal Collapse (growing/shrinking width), not a crossfade - the back
                 button+hint slides INTO place, pushing the logo rightward as it grows, and the logo
                 slides back to its resting position as it shrinks away, rather than the two dissolving
@@ -242,47 +307,68 @@ function App() {
                   <IconButton onClick={handleBack} aria-label="Back" size="small">
                     <ChevronLeftTwoToneIcon />
                   </IconButton>
-                  <InlineCode color="secondary">Esc</InlineCode>
+                  {/* a keyboard-shortcut hint has nothing to say on a touch device, which is the
+                      entire reason a screen is "narrow" here in the first place */}
+                  {!narrow && <InlineCode color="secondary">Esc</InlineCode>}
                 </Stack>
               </Collapse>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                 <LogoIcon playSignal={logoPlaySignal} sx={{ height: 40, width: 40 }} />
-                <Stack direction="column" spacing={-2}>
-                  <Typography variant="h6">Repo</Typography>
-                  <Typography variant="h6">Radar</Typography>
-                </Stack>
+                {/* the "Repo/Radar" wordmark is the first thing to go on a narrow screen - the
+                    logo alone is enough to identify the app, and the room it frees up is what
+                    keeps the nav buttons/back chevron from wrapping or crowding the color toggle */}
+                {!narrow && (
+                  <Stack direction="column" spacing={-2}>
+                    <Typography variant="h6">Repo</Typography>
+                    <Typography variant="h6">Radar</Typography>
+                  </Stack>
+                )}
               </Stack>
             </Stack>
-            <Button
-              variant="text"
-              size="medium"
-              label="Homepage"
-              startIcon={<HomeTwoToneIcon />}
-              onClick={() => {
-                navigate('/')
-                setSearchScope('global')
-                setSearch('')
-              }}
-              sx={(theme) => navButtonSx(theme, page === 'home')}
-            />
-            <Button
-              variant="text"
-              size="medium"
-              label="Tracked Repos"
-              startIcon={<BookmarksTwoToneIcon />}
-              onClick={() => {
-                // clears any leftover global query - otherwise the render-time redirect just
-                // above (global search + Tracked page -> bounce to Homepage) would immediately
-                // fire again and undo this click
-                pendingTrackedDefaultRef.current = true
-                setSearch('')
-                navigate('/tracked')
-              }}
-              sx={(theme) => navButtonSx(theme, page === 'tracked')}
-            />
+            {narrow ? (
+              <>
+                <Tooltip title="Homepage">
+                  <IconButton onClick={goHome} color={page === 'home' ? 'primary' : 'default'} aria-label="Homepage">
+                    <HomeTwoToneIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Tracked Repos">
+                  <IconButton onClick={goTracked} color={page === 'tracked' ? 'primary' : 'default'} aria-label="Tracked Repos">
+                    <BookmarksTwoToneIcon />
+                  </IconButton>
+                </Tooltip>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="text"
+                  size="medium"
+                  label="Homepage"
+                  startIcon={<HomeTwoToneIcon />}
+                  onClick={goHome}
+                  sx={(theme) => navButtonSx(theme, page === 'home')}
+                />
+                <Button
+                  variant="text"
+                  size="medium"
+                  label="Tracked Repos"
+                  startIcon={<BookmarksTwoToneIcon />}
+                  onClick={goTracked}
+                  sx={(theme) => navButtonSx(theme, page === 'tracked')}
+                />
+              </>
+            )}
           </Stack>
         }
-        end={<ColorModeToggle />}
+        end={
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+            {/* moved up here from RepoDetailView's own content on a narrow screen - see
+                repoRefreshControls above - since the wide layout has room to keep its own copy
+                inline beside its tab ButtonGroup instead. */}
+            {narrow && repoRefreshControls && <RefreshButton {...repoRefreshControls} />}
+            <ColorModeToggle />
+          </Stack>
+        }
       />
       )}
       {/* position:relative + each transitioning child pinned via inset:0 is what makes this a
@@ -343,6 +429,9 @@ function App() {
                       trackedKeys={trackedKeys}
                       onToggleTrack={toggleTrack}
                       onUntrack={untrack}
+                      onClearSearch={() => setSearch('')}
+                      searchPanelOpen={searchPanelOpen}
+                      onRefreshControlsChange={handleRefreshControlsChange}
                     />
                   }
                 />
@@ -352,6 +441,31 @@ function App() {
           </Fade>
         </TransitionGroup>
       </Box>
+      {/* the search field's own narrow-screen home - see the top AppBar's `hideSearch` above.
+          A plain flex sibling (not position:fixed) so the content Box's flex:1 already leaves
+          exactly enough room for it, rather than needing a manually-tracked height reserved via
+          padding on the content below. */}
+      {narrow && page !== 'other' && (
+        <MuiAppBar position="static" color="transparent" elevation={8} sx={{ bgcolor: 'background.paper' }}>
+          {/* `dense` + an explicit fixed `px` (rather than Toolbar's own default gutters, which
+              step up at the `sm` breakpoint - still reachable within our own wider "narrow" band)
+              is what actually makes this sit flush against RepoDetailView's own bottom tab bar
+              with no visible gap or margin mismatch between the two - same horizontal inset,
+              same compact vertical sizing, on both. */}
+          <Toolbar variant="dense" sx={{ px: 2 }}>
+            <SearchField
+              ref={searchRef}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onFocus={handleSearchFocus}
+              hints={[]}
+              scopePill={searchScopePill}
+              onScopePillRemove={handleScopePillRemove}
+              sx={{ width: '100%', maxWidth: 'none' }}
+            />
+          </Toolbar>
+        </MuiAppBar>
+      )}
     </Box>
   )
 }

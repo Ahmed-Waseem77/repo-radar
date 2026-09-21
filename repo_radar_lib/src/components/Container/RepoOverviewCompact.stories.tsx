@@ -14,6 +14,7 @@ const meta: Meta<typeof RepoOverviewCompact> = {
     fitContent: { control: 'boolean' },
     hideDescription: { control: 'boolean' },
     selected: { control: 'boolean' },
+    disableDetailedView: { control: 'boolean' },
   },
 }
 export default meta
@@ -180,6 +181,17 @@ export const Selected: Story = {
   args: {
     ...NoDescription.args,
     selected: true,
+  },
+}
+
+// e.g. a narrow-screen repo detail view, where this card IS the detail view rather than a link
+// into one - no overlay button, no hover chevron hint, Track/Untrack stays fully functional
+export const DetailView: Story = {
+  args: {
+    ...Default.args,
+    title: 'repo-radar-detail',
+    disableDetailedView: true,
+    width: '100%',
   },
 }
 

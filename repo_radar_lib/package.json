@@ -18,8 +18,11 @@
   ],
   "scripts": {
     "build": "tsc -b && vite build",
+    "lint": "eslint .",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
   },
   "peerDependencies": {
     "@emotion/react": "^11.11.0",

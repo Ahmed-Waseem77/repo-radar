@@ -34,6 +34,10 @@ export interface RepoOverviewCompactProps extends RepoOverviewDto {
     // entirely, the archived pill collapses to a bare warning icon, and the remaining pills sit
     // beside the title/owner block (space-between) instead of their own row underneath it.
     variant?: 'default' | 'stripped',
+    // omits the full-card "view details" overlay button below - for when this card IS the
+    // detail view itself (clicking it shouldn't navigate anywhere); Track/Untrack stays fully
+    // functional either way. Mirrors RepoOverview's own prop of the same name.
+    disableDetailedView?: boolean,
 }
 
 const CARD_WIDTH = 280
@@ -58,6 +62,7 @@ export default function RepoOverviewCompact({
     hideDescription = false,
     selected = false,
     variant = 'default',
+    disableDetailedView = false,
     ...props
 }: RepoOverviewCompactProps) {
     const stripped = variant === 'stripped'
@@ -241,16 +246,20 @@ export default function RepoOverviewCompact({
                     >
                         {props.title}
                     </TextLink>
-                    <ChevronRightTwoToneIcon
-                        className="repo-overview-chevron"
-                        sx={(theme) => ({
-                            opacity: 0,
-                            transform: 'translateX(-4px)',
-                            transition: theme.transitions.create(['opacity', 'transform']),
-                            color: 'text.secondary',
-                            flexShrink: 0,
-                        })}
-                    />
+                    {/* hints at the full-card overlay button below - hidden entirely alongside it
+                        when disableDetailedView is set, since there's then nothing it's hinting at */}
+                    {!disableDetailedView && (
+                        <ChevronRightTwoToneIcon
+                            className="repo-overview-chevron"
+                            sx={(theme) => ({
+                                opacity: 0,
+                                transform: 'translateX(-4px)',
+                                transition: theme.transitions.create(['opacity', 'transform']),
+                                color: 'text.secondary',
+                                flexShrink: 0,
+                            })}
+                        />
+                    )}
                 </Stack>
                 <TextLink href={props.ownerUrl} variant='caption' color='textSecondary' noWrap sx={interactiveSx}>
                     {props.owner}
@@ -356,30 +365,35 @@ export default function RepoOverviewCompact({
                 </Stack>
             )}
             {/* covers the whole card as the actual click target for "view details" - see
-                RepoOverview.tsx for the full rationale (same pattern, applied identically here) */}
-            <Box
-                component="button"
-                type="button"
-                onClick={onDetailedView}
-                aria-label={`View details for ${props.title}`}
-                sx={(theme) => ({
-                    position: 'absolute',
-                    inset: 0,
-                    zIndex: 0,
-                    width: '100%',
-                    height: '100%',
-                    margin: 0,
-                    padding: 0,
-                    border: 'none',
-                    borderRadius: 'inherit',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    '&:focus-visible': {
-                        outline: `2px solid ${theme.vars?.palette.primary.main ?? theme.palette.primary.main}`,
-                        outlineOffset: 2,
-                    },
-                })}
-            />
+                RepoOverview.tsx for the full rationale (same pattern, applied identically here).
+                Omitted entirely when this card IS the detail view already (disableDetailedView) -
+                there's nowhere further to navigate to, so the overlay would just be dead click
+                area sitting on top of nothing. */}
+            {!disableDetailedView && (
+                <Box
+                    component="button"
+                    type="button"
+                    onClick={onDetailedView}
+                    aria-label={`View details for ${props.title}`}
+                    sx={(theme) => ({
+                        position: 'absolute',
+                        inset: 0,
+                        zIndex: 0,
+                        width: '100%',
+                        height: '100%',
+                        margin: 0,
+                        padding: 0,
+                        border: 'none',
+                        borderRadius: 'inherit',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        '&:focus-visible': {
+                            outline: `2px solid ${theme.vars?.palette.primary.main ?? theme.palette.primary.main}`,
+                            outlineOffset: 2,
+                        },
+                    })}
+                />
+            )}
         </Stack>
     )
 }

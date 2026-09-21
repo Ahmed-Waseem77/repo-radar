@@ -1,0 +1,26 @@
+name: ESLint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # repo_radar_app imports types from @radar-repo/radar-repo-lib's built dist/ output -
+      # without this, its own typescript-aware eslint rules can't resolve those imports.
+      - run: npm run build --workspace repo_radar_lib
+
+      - run: npm run lint --workspaces --if-present

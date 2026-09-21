@@ -85,8 +85,9 @@ export const MaxWidth: Story = {
 }
 
 // many languages, each with a small enough share to otherwise collide on color -
-// demonstrates both the languageCutoff prop (top 5 only, renormalized to 100%) and
-// the curated color palette staying distinct across the shown segments
+// demonstrates both the languageCutoff prop (top 5 shown, the rest combined into a single
+// "Other" entry rather than dropped) and the curated color palette staying distinct across the
+// shown segments
 export const ManyLanguagesWithCutoff: Story = {
   args: {
     languages: ['TypeScript', 'JavaScript', 'CSS', 'HTML', 'Go', 'Rust', 'Python', 'Shell', 'Dockerfile', 'Makefile'],
@@ -96,8 +97,10 @@ export const ManyLanguagesWithCutoff: Story = {
   },
 }
 
-// 'inline' labelLayout: one single noWrap line instead of per-segment aligned
-// captions - reads better once segments get too narrow to fit their own label under
+// 'inline' labelLayout: a running list of language chips (each with a color swatch matching its
+// bar segment) instead of per-segment aligned captions - reads better once segments get too
+// narrow to fit their own label under. Wraps onto multiple lines rather than needing a single
+// overflowing line.
 export const InlineLabels: Story = {
   render: (args) => (
     <div style={{ width: 260, border: '1px dashed gray', padding: 8 }}>
@@ -109,5 +112,31 @@ export const InlineLabels: Story = {
     distribution: [82, 45, 12, 8, 6],
     height: 'md',
     labelLayout: 'inline',
+  },
+}
+
+// the repo detail view's actual usage: 'inline' + a generous cutoff (20) so real-world repos
+// rarely hit the "Other" bucket at all, but this fixture has enough languages to force it -
+// demonstrates the swatches, the wrapping onto multiple lines, and the "Other: N%" entry
+export const InlineWithOtherBucket: Story = {
+  render: (args) => (
+    <div style={{ width: 320, border: '1px dashed gray', padding: 8 }}>
+      <LanguageDistributionBar {...args} />
+    </div>
+  ),
+  args: {
+    languages: [
+      'TypeScript', 'JavaScript', 'CSS', 'HTML', 'Go', 'Rust', 'Python',
+      'Shell', 'Dockerfile', 'Makefile', 'Ruby', 'Java', 'Kotlin', 'Swift',
+      'C', 'C++', 'C#', 'PHP', 'Perl', 'Lua', 'Haskell', 'Elixir', 'Scala',
+    ],
+    distribution: [
+      300, 210, 90, 60, 55, 40, 30,
+      20, 12, 8, 18, 16, 14, 13,
+      11, 10, 9, 8, 7, 6, 5, 4, 3,
+    ],
+    height: 'md',
+    labelLayout: 'inline',
+    languageCutoff: 20,
   },
 }

@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { Children, Fragment, isValidElement, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { Box } from '@mui/material'
+import { Box, Divider } from '@mui/material'
 
 export type CarouselOrientation = 'horizontal' | 'vertical'
 // 'row': a single scrolling line along `orientation`'s axis (the original behavior).
@@ -23,6 +23,18 @@ export interface CarouselProps {
     // actually scroll instead of just growing to fit its content; 'horizontal' doesn't need it
     // since that axis already sizes to the viewport it's rendered in.
     maxHeight?: number | string
+    // fixes the carousel's own width regardless of its container - most useful for a 'vertical'
+    // carousel sitting beside other content in a flex row, where a wrapping 'grid' layout's
+    // shrink-to-fit (e.g. width: 'fit-content') sizing is unreliable: browsers compute
+    // shrink-to-fit from the UNWRAPPED max-content width (every item in one line), not the
+    // actually-wrapped rendered width, so it can end up far wider than intended. Leave unset for
+    // the original "fill whatever width the parent gives it" behavior.
+    width?: number | string
+    // renders a thin divider between each item (perpendicular to `orientation`'s axis) - most
+    // useful for a single-column 'grid' or a 'row', where "between" is unambiguous; with a
+    // multi-column wrapping grid it still renders once per item boundary in DOM order, which can
+    // look odd wrapping across rows.
+    divider?: boolean
     // set false to disable the automatic scrolling entirely (still scrollable by the user)
     autoScroll?: boolean
     // ms to wait after mount before auto-scrolling starts
@@ -97,6 +109,8 @@ export default function Carousel({
     orientation = 'horizontal',
     layout = 'row',
     maxHeight,
+    width,
+    divider = false,
     autoScroll = true,
     autoScrollDelay = 2000,
     autoScrollStep = 1,
@@ -144,6 +158,7 @@ export default function Carousel({
             sx={{
                 position: 'relative',
                 ...(horizontal ? {} : { height: '100%', minHeight: 0 }),
+                ...(width !== undefined && { width, flexShrink: 0 }),
             }}
             onMouseEnter={() => { pausedRef.current = true }}
             onMouseLeave={() => { pausedRef.current = false }}
@@ -173,7 +188,33 @@ export default function Carousel({
                     maxHeight: horizontal ? undefined : maxHeight,
                 })}
             >
-                {children}
+                {divider
+                    ? Children.toArray(children).map((child, index) => (
+                          <Fragment key={isValidElement(child) && child.key !== null ? child.key : index}>
+                              {index > 0 && (
+                                  layout === 'grid' && !horizontal ? (
+                                      // grid's main axis is always 'row' (see flexDirection above), so a
+                                      // flexItem divider - which relies on alignSelf:stretch filling its
+                                      // own flex LINE's cross-size - collapses to 0 height whenever it
+                                      // wraps onto a line by itself: with nothing else sharing that line,
+                                      // the line's cross-size is just the divider's own (contentless, ~0)
+                                      // hypothetical size. That's exactly what happens once every item
+                                      // already fills a full line on its own (e.g. a single-column grid,
+                                      // the only real use of `divider` so far). flexBasis:100% sidesteps
+                                      // it entirely: rather than stretching to match a line, the divider
+                                      // simply forces its own full-width line, sized by its own default
+                                      // border thickness. A true multi-column grid would still see every
+                                      // divider force its own row break, splitting each item onto its own
+                                      // line - `divider` isn't meant for that case.
+                                      <Divider sx={{ flexBasis: '100%' }} />
+                                  ) : (
+                                      <Divider orientation={horizontal ? 'vertical' : 'horizontal'} flexItem />
+                                  )
+                              )}
+                              {child}
+                          </Fragment>
+                      ))
+                    : children}
             </Box>
             <EdgeFade orientation={orientation} side="start" size={edgeFadeWidth} />
             <EdgeFade orientation={orientation} side="end" size={edgeFadeWidth} />

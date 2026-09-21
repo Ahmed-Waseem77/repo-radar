@@ -12,6 +12,8 @@ const meta: Meta<typeof Carousel> = {
   component: Carousel,
   argTypes: {
     autoScroll: { control: 'boolean' },
+    divider: { control: 'boolean' },
+    width: { control: 'number' },
   },
 }
 export default meta
@@ -109,6 +111,16 @@ export const ManualOnly: Story = {
   },
 }
 
+// a divider between each card in a single scrolling row - orientation matches the scroll axis
+// (vertical rules for a horizontal row)
+export const WithDivider: Story = {
+  args: {
+    ...RepoCards.args,
+    autoScroll: false,
+    divider: true,
+  },
+}
+
 // a vertically-scrolling grid, manually scrolled only - e.g. the Tracked Repos page
 export const VerticalGrid: Story = {
   args: {
@@ -126,6 +138,49 @@ export const VerticalGrid: Story = {
     (Story) => (
       <Box sx={{ height: 420 }}>
         <Story />
+      </Box>
+    ),
+  ],
+}
+
+// a single-column vertical grid (narrow enough that only one card fits per line, e.g. the repo
+// detail view's side panel) with dividers between rows - this is the specific 'grid' + 'vertical'
+// combination that needed the flexBasis:100% fix in Carousel.tsx (see its own comment)
+export const VerticalGridWithDivider: Story = {
+  args: {
+    ...VerticalGrid.args,
+    children: repoFixtures.map((repo) => (
+      <RepoOverviewCompact key={getRepoKey(repo)} {...repo} variant="stripped" fitContent width={260} />
+    )),
+    divider: true,
+    maxHeight: 420,
+  },
+  decorators: [
+    (Story) => (
+      <Box sx={{ height: 420, width: 260 }}>
+        <Story />
+      </Box>
+    ),
+  ],
+}
+
+// the `width` prop, not the wrapping container, is what keeps a 'grid' carousel from exploding
+// to its unwrapped max-content width - a plain CSS `width: fit-content` on a wrapping flex
+// container sizes from EVERY item laid out in one line (ignoring wrap), not the actually-wrapped
+// rendered width, so it comes out far too wide. This sits the carousel beside another block in a
+// row specifically to prove it stays a fixed 260px regardless of how much room the row offers.
+export const FixedWidthBesideContent: Story = {
+  args: {
+    ...VerticalGridWithDivider.args,
+    width: 260,
+  },
+  decorators: [
+    (Story) => (
+      <Box sx={{ height: 420, display: 'flex', gap: 2 }}>
+        <Story />
+        <Box sx={{ flex: 1, border: '1px dashed gray', p: 2 }}>
+          <Typography variant="body2">The rest of the row - the carousel beside it should stay fixed-width.</Typography>
+        </Box>
       </Box>
     ),
   ],

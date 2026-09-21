@@ -6,16 +6,14 @@ cd repo_radar
 ```
 # Features
 
-# Architecture
-
 # Local Development
 
 >[!IMPORTANT]
 > You need `$VITE_GITHUB_TOKEN` defined in an `.env` in `radar_repo_app`, for a more usable experience with less rate limits
-> Configure a *READ ONLY* Pat token as VITE will bundle it with the app
+> Configure a *READ ONLY* PAT token as VITE will bundle it with the app
 > you can do `set -a && source .env && set +a` for a key value pair env file
 
-Install Dependencies:
+### Install Dependencies:
 
 ``` shell
 npm install
@@ -66,11 +64,19 @@ npm run build -w repo_radar_lib && npm run build -w repo_radar_app
 
 GenAI was used so far to aid in the following:
 - Scaffolding Stories/Story Prop Data for Components
+- Scaffolding tsx for components
 - Making of Simple Components such as `Pill.tsx` or `Button.tsx`
 - Moving code around/refactoring maintaining original code essence
 - Wrapping SVG assets in SVG Components under `radar_repo_lib/src/components/Icons/`
-- Debugging
+- Debugging CSS and visual errors
 
 Any AI output was reviewed beforehand
 
+--- 
 
+# Architecture
+
+# Enhancements to requriements
+
+# Design Decisions
+- Not using something like `Zod`: Github API is versioned so no need to validate schema on runtime, using it adds burden to performance and bundle size

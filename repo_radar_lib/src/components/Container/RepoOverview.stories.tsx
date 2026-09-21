@@ -7,6 +7,8 @@ const meta: Meta<typeof RepoOverview> = {
   component: RepoOverview,
   argTypes: {
     tracked: { control: 'boolean' },
+    disableDetailedView: { control: 'boolean' },
+    disableTrackButton: { control: 'boolean' },
   },
 }
 export default meta
@@ -40,6 +42,9 @@ export const Default: Story = {
     archived: false,
     loading: false,
     tracked: false,
+    // explicit rather than left unset - `undefined` specifically means "fetch in flight" and
+    // would show a perpetual loading badge; this story isn't demonstrating that state.
+    latestRelease: null,
   },
 }
 
@@ -115,5 +120,51 @@ export const CommitNotFound: Story = {
     ...Default.args,
     title: 'repo-radar-empty',
     lastCommit: null,
+  },
+}
+
+export const WithLatestRelease: Story = {
+  args: {
+    ...Default.args,
+    title: 'repo-radar-released',
+    latestRelease: {
+      version: 'v2.4.0',
+      url: 'https://github.com/ahmedwaseem/repo-radar/releases/tag/v2.4.0',
+    },
+  },
+}
+
+// the release fetch hasn't settled yet - shows InlineCode's own animated circular loading badge
+// instead of nothing, so the header doesn't jump once it resolves
+export const LoadingLatestRelease: Story = {
+  args: {
+    ...Default.args,
+    title: 'repo-radar-loading',
+    latestRelease: undefined,
+  },
+}
+
+// used as the top card of the (non-routable) repo detail view - clicking the card itself
+// shouldn't navigate anywhere since you're already viewing its details, but Track/Untrack
+// still needs to work
+export const DetailView: Story = {
+  args: {
+    ...Default.args,
+    title: 'repo-radar-detail',
+    disableDetailedView: true,
+    latestRelease: {
+      version: 'v2.4.0',
+      url: 'https://github.com/ahmedwaseem/repo-radar/releases/tag/v2.4.0',
+    },
+  },
+}
+
+// e.g. the repo detail view, which places its own Track/Untrack button inline with other actions
+// (a tab switcher) instead of using the card's default spot for it
+export const NoTrackButton: Story = {
+  args: {
+    ...Default.args,
+    title: 'repo-radar-external-track',
+    disableTrackButton: true,
   },
 }

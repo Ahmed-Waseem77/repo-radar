@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Stack, Skeleton, Tooltip, Typography, Button as MuiButton } from '@mui/material'
+import { Box, Collapse, Stack, Skeleton, Tooltip, Typography, Button as MuiButton } from '@mui/material'
 import { Pill } from '../Text/Pill'
 import InlineCode from '../Text/InlineCode'
 import { TextLink } from '../Text/TextLink'
@@ -18,6 +18,17 @@ export interface RepoOverviewCompactProps extends RepoOverviewDto {
     // tighter/looser layouts (e.g. the 'stripped' variant, which needs much less height)
     width?: number | string,
     height?: number | string,
+    // drops the `height` floor entirely so the card sizes to exactly what its content needs -
+    // e.g. a dense single-column list where every card should hug its own content instead of
+    // sharing one fixed minimum height.
+    fitContent?: boolean,
+    // omits the description line entirely (rather than clamping/collapsing it) - for contexts
+    // where the card is a compact selector, not a preview of the repo's content.
+    hideDescription?: boolean,
+    // highlights this card as the currently-active selection (e.g. the repo shown in an adjacent
+    // detail view) - a background tint plus permanently showing the hover-only chevron
+    // affordance, rather than requiring the mouse to actually be over it.
+    selected?: boolean,
     // 'default' (unchanged): full card - header (title/owner + Track button), pills row,
     // description, last commit. 'stripped': last commit and the Track button are dropped
     // entirely, the archived pill collapses to a bare warning icon, and the remaining pills sit
@@ -43,6 +54,9 @@ export default function RepoOverviewCompact({
     loading,
     width = CARD_WIDTH,
     height = CARD_MIN_HEIGHT,
+    fitContent = false,
+    hideDescription = false,
+    selected = false,
     variant = 'default',
     ...props
 }: RepoOverviewCompactProps) {
@@ -87,7 +101,7 @@ export default function RepoOverviewCompact({
 
     if (loading) {
         return (
-            <Stack direction="column" spacing={1} sx={{ p: 2, width, minHeight: height, flexShrink: 0 }}>
+            <Stack direction="column" spacing={1} sx={{ p: 2, width, minHeight: fitContent ? undefined : height, flexShrink: 0 }}>
                 <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
                     <Skeleton variant="text" width="60%" sx={{ fontSize: '1.1rem' }} />
                     <Skeleton variant="rounded" width={60} height={24} />
@@ -252,7 +266,7 @@ export default function RepoOverviewCompact({
             sx={(theme) => ({
                 position: 'relative',
                 width,
-                minHeight: height,
+                minHeight: fitContent ? undefined : height,
                 flexShrink: 0,
                 borderRadius: 1,
                 padding: 2,
@@ -263,6 +277,7 @@ export default function RepoOverviewCompact({
                 gap: 1,
                 border: stripped ? '0px solid' : `1px solid ${theme.vars?.palette.divider ?? theme.palette.divider}`,
                 transition: theme.transitions.create('background-color'),
+                ...(selected && { bgcolor: 'action.selected' }),
                 '&:hover': {
                     bgcolor: 'action.hover',
                 },
@@ -270,6 +285,14 @@ export default function RepoOverviewCompact({
                     opacity: 1,
                     transform: 'translateX(0)',
                 },
+                // stays visible regardless of hover, rather than only hinting at the "view
+                // details" overlay button transiently - this card IS the current selection
+                ...(selected && {
+                    '& .repo-overview-chevron': {
+                        opacity: 1,
+                        transform: 'translateX(0)',
+                    },
+                }),
             })}
         >
             {stripped ? (
@@ -288,18 +311,24 @@ export default function RepoOverviewCompact({
                     {pillsAndArchived}
                 </>
             )}
-            <Typography
-                variant='body2'
-                color='textDimmedInverted'
-                sx={{
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                }}
-            >
-                {props.description}
-            </Typography>
+            {/* Collapse (rather than the plain conditional this used to be) animates the height
+                change instead of cutting it instantly - since Collapse continuously resizes the
+                DOM node during the animation rather than just tweening a start/end CSS value, any
+                sibling cards below this one in a list reflow smoothly too, as a side effect. */}
+            <Collapse in={!hideDescription}>
+                <Typography
+                    variant='body2'
+                    color='textDimmedInverted'
+                    sx={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                    }}
+                >
+                    {props.description}
+                </Typography>
+            </Collapse>
             {!stripped && (
                 <Stack direction='column' spacing={0}>
                     {props.lastCommit ? (

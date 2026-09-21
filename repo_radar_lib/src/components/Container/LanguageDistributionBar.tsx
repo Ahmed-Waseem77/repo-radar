@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { LanguageInfo } from '../../types/repo.ts'
 import { Box, Typography, Stack } from '@mui/material'
-import { emphasize } from '@mui/material/styles'
+import { alpha, emphasize } from '@mui/material/styles'
 import { normalizeDistribution, hashedThemeColor } from '../../util'
 
 export interface LanguageDistributionBarProps extends LanguageInfo {
@@ -24,6 +24,12 @@ const heightMapper = (height: LanguageDistributionBarProps['height']) => {
     if (height === 'lg') return 30;
     return 10; // sm
 }
+
+// languages beyond the cutoff are combined into this single synthetic entry (its true combined
+// share, not silently dropped) rather than just disappearing - keeps the shown top N's own
+// percentages honest/proportional to the real total instead of inflating them to fill 100% on
+// their own once the rest are cut.
+const OTHER_LANGUAGE_LABEL = 'Other'
 
 export default function LanguageDistributionBar({
     height,
@@ -61,11 +67,20 @@ export default function LanguageDistributionBar({
     }
 
     // keep only the top `languageCutoff` languages by raw distribution value, then let
-    // normalizeDistribution scale just that subset back up to 100%
+    // normalizeDistribution scale just that subset (plus the "Other" bucket below) back up to 100%
     const ranked = info.languages
         .map((language, i) => ({ language, value: info.distribution[i] ?? 0 }))
         .sort((a, b) => b.value - a.value)
-    const shown = languageCutoff !== undefined ? ranked.slice(0, languageCutoff) : ranked
+    const shown =
+        languageCutoff !== undefined && ranked.length > languageCutoff
+            ? [
+                  ...ranked.slice(0, languageCutoff),
+                  {
+                      language: OTHER_LANGUAGE_LABEL,
+                      value: ranked.slice(languageCutoff).reduce((sum, entry) => sum + entry.value, 0),
+                  },
+              ]
+            : ranked
 
     const normalized = normalizeDistribution({
         languages: shown.map((entry) => entry.language),
@@ -167,20 +182,25 @@ export default function LanguageDistributionBar({
                 })}
             </Stack>
             {labelLayout === 'inline' && (
-                <Typography variant="caption" component="code">
-                    {visibleInline.map(({ language, i, pct }, idx) => (
+                // display:flex/flexWrap (rather than relying on default inline text flow) lets
+                // entries wrap onto multiple lines as a whole unit each, with a real gap (both
+                // between entries on a line and between wrapped lines) instead of the old
+                // per-entry marginRight trick, which had no equivalent for row spacing.
+                <Typography variant="caption" component="code" sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2.5, rowGap: 0.75 }}>
+                    {visibleInline.map(({ language, i, pct }) => (
                         <Box
                             key={language}
                             component="span"
+                            onMouseEnter={() => setHoveredIndex(i)}
+                            onMouseLeave={() => setHoveredIndex((current) => (current === i ? null : current))}
                             sx={[
                                 (theme) => {
                                     const { light, dark } = hashedThemeColor(language)
                                     return {
-                                        display: 'inline-block',
-                                        // explicit margin instead of relying on literal space
-                                        // characters between spans - those get unreliable once a
-                                        // sibling's fontSize is growing/shrinking on hover
-                                        marginRight: idx < visibleInline.length - 1 ? theme.spacing(1.5) : 0,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: theme.spacing(0.5),
+                                        whiteSpace: 'nowrap',
                                         transition: theme.transitions.create(['font-size', 'color']),
                                         ...(hoveredIndex === i && {
                                             fontSize: '14px',
@@ -191,6 +211,28 @@ export default function LanguageDistributionBar({
                                 },
                             ]}
                         >
+                            {/* the same fill/border color pair (and light/dark role-swap) this
+                                language's bar segment itself uses - a legend swatch tying the
+                                two together - just tonal (alpha'd) rather than solid, matching
+                                Pill's own "never a solid fill" convention elsewhere in this lib. */}
+                            <Box
+                                component="span"
+                                sx={(theme) => {
+                                    const { light, dark } = hashedThemeColor(language)
+                                    return {
+                                        width: 8,
+                                        height: 8,
+                                        borderRadius: '2px',
+                                        flexShrink: 0,
+                                        bgcolor: alpha(dark, 0.35),
+                                        border: `1px solid ${alpha(light, 0.8)}`,
+                                        ...theme.applyStyles('dark', {
+                                            bgcolor: alpha(light, 0.35),
+                                            border: `1px solid ${alpha(dark, 0.8)}`,
+                                        }),
+                                    }
+                                }}
+                            />
                             <Box component="span" sx={{ fontWeight: 'bold' }}>
                                 {language}
                             </Box>

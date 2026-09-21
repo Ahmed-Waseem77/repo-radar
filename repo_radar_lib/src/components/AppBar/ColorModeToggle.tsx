@@ -12,11 +12,16 @@ const modeOptions = [
     { value: 'system', label: 'System', icon: <SettingsBrightnessTwoToneIcon fontSize="small" /> },
 ] as const
 
-// icon-only trigger (always a sun, regardless of the active mode) that opens a menu of
-// light/dark/system - built on MUI's own useColorScheme, so it needs no app-level state.
+// icon-only trigger (a moon or sun, reflecting the ACTUAL active mode - not just the raw
+// setting) that opens a menu of light/dark/system - built on MUI's own useColorScheme, so it
+// needs no app-level state.
 export function ColorModeToggle() {
-    const { mode, setMode } = useColorScheme()
+    const { mode, systemMode, setMode } = useColorScheme()
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
+
+    // mode === 'system' doesn't say which way it's currently resolved - systemMode (only
+    // populated in that case) carries the OS-level light/dark it settled on.
+    const isDark = (mode === 'system' ? systemMode : mode) === 'dark'
 
     return (
         <>
@@ -26,7 +31,7 @@ export function ColorModeToggle() {
                     aria-label="Color mode"
                     color="inherit"
                 >
-                    <LightModeTwoToneIcon />
+                    {isDark ? <DarkModeTwoToneIcon /> : <LightModeTwoToneIcon />}
                 </IconButton>
             </Tooltip>
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>

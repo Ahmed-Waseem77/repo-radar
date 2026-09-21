@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import NewReleasesTwoToneIcon from '@mui/icons-material/NewReleasesTwoTone'
 import InlineCode from './InlineCode'
 
 const meta: Meta<typeof InlineCode> = {
@@ -6,6 +7,7 @@ const meta: Meta<typeof InlineCode> = {
   component: InlineCode,
   argTypes: {
     color: { control: 'select', options: ['primary', 'secondary', 'error', 'warning', 'info', 'success'] },
+    loading: { control: 'boolean' },
   },
 }
 export default meta
@@ -50,6 +52,26 @@ export const Success: Story = {
   args: {
     children: 'npm test',
     color: 'success',
+  },
+}
+
+// e.g. RepoOverview's release version badge - startIcon leads the text, sized via fontSize:
+// 'inherit' so it scales with InlineCode's own font-size rather than needing a fixed px value
+export const WithStartIcon: Story = {
+  args: {
+    children: 'v2.4.0',
+    color: 'secondary',
+    startIcon: <NewReleasesTwoToneIcon fontSize="inherit" />,
+  },
+}
+
+// content that hasn't resolved yet (e.g. a version number still being fetched) - swaps the whole
+// pill for a small circular badge containing just the animated HourglassIcon; `children`/
+// `startIcon` are ignored while loading, so there's nothing else to pass here
+export const Loading: Story = {
+  args: {
+    color: 'secondary',
+    loading: true,
   },
 }
 

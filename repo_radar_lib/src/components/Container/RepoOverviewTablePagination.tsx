@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import type { ChangeEvent, MouseEvent, ReactNode } from 'react'
 import { Stack, Divider, Typography, TablePagination } from '@mui/material'
 import RepoOverview, { type RepoOverviewProps } from './RepoOverview'
@@ -22,6 +23,11 @@ export interface RepoOverviewTablePaginationProps {
     // total row count across ALL pages, not just this one - passing this switches the
     // component into server-paginated mode (see `repos` above)
     count?: number
+    // customizes how each row renders - defaults to a plain `<RepoOverview {...repo} />`. Exists
+    // for callers that need to wrap a row with something this component can't do itself (e.g. a
+    // per-row data-fetching hook, which can't live in here without hardcoding an app-specific
+    // concern into the lib).
+    renderRow?: (repo: RepoOverviewProps) => ReactNode
 }
 
 export default function RepoOverviewTablePagination({
@@ -34,6 +40,7 @@ export default function RepoOverviewTablePagination({
     emptyStateImage,
     emptyStateLabel,
     count,
+    renderRow = (repo) => <RepoOverview {...repo} />,
 }: RepoOverviewTablePaginationProps) {
     const serverPaginated = count !== undefined
 
@@ -53,7 +60,7 @@ export default function RepoOverviewTablePagination({
         <Stack direction="column">
             <Stack direction="column" divider={<Divider />}>
                 {visibleRepos.map((repo) => (
-                    <RepoOverview key={getRepoKey(repo)} {...repo} />
+                    <Fragment key={getRepoKey(repo)}>{renderRow(repo)}</Fragment>
                 ))}
             </Stack>
             <TablePagination

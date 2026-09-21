@@ -1,3 +1,5 @@
+export { default as InlineCode } from './InlineCode'
+export * from './InlineCode'
 export * from './NotFoundNotice'
 export * from './Pill'
 export * from './TextLink'

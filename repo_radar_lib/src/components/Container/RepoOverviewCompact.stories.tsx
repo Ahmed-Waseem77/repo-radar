@@ -11,6 +11,9 @@ const meta: Meta<typeof RepoOverviewCompact> = {
   argTypes: {
     tracked: { control: 'boolean' },
     variant: { control: 'select', options: ['default', 'stripped'] },
+    fitContent: { control: 'boolean' },
+    hideDescription: { control: 'boolean' },
+    selected: { control: 'boolean' },
   },
 }
 export default meta
@@ -148,6 +151,35 @@ export const CustomSize: Story = {
     title: 'repo-radar-wide',
     width: 400,
     height: 340,
+  },
+}
+
+// no `height` floor - the card hugs exactly what its content needs, e.g. a dense selector list
+export const FitContent: Story = {
+  args: {
+    ...Stripped.args,
+    title: 'repo-radar-compact',
+    fitContent: true,
+  },
+}
+
+// e.g. the currently-selected item in a selector list, where the description would be
+// redundant with the full detail already shown elsewhere
+export const NoDescription: Story = {
+  args: {
+    ...Stripped.args,
+    title: 'repo-radar-selected',
+    fitContent: true,
+    hideDescription: true,
+  },
+}
+
+// e.g. the repo detail view's side panel, where this card is the one currently shown at full
+// size elsewhere - combines with the two above, matching how that view actually uses it
+export const Selected: Story = {
+  args: {
+    ...NoDescription.args,
+    selected: true,
   },
 }
 

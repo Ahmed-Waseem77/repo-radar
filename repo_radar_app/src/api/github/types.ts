@@ -66,3 +66,11 @@ export interface GithubCommit {
 
 // GET /repos/{owner}/{repo}/languages - language name -> bytes of code written in it
 export type GithubLanguages = Record<string, number>
+
+// GET /repos/{owner}/{repo}/releases/latest - only the fields we actually read. GitHub 404s
+// this endpoint for a repo with no (non-draft, non-prerelease) release - see getLatestRelease.
+export interface GithubRelease {
+    tag_name: string
+    name: string | null
+    html_url: string
+}

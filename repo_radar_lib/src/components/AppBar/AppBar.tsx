@@ -63,6 +63,12 @@ export function AppBar({
             sx={(theme) => ({
                 bgcolor: scrolled ? 'background.paper' : 'transparent',
                 transition: theme.transitions.create(['background-color', 'box-shadow']),
+                // 0 on a regular browser (env() falls back to 0 with nothing to report) - only
+                // real inside a native shell rendering edge-to-edge behind the status bar (e.g.
+                // the Capacitor Android build, see its own MainActivity/styles.xml), where it
+                // pushes this bar's actual content down below the status bar/notch instead of
+                // sitting underneath it.
+                pt: 'env(safe-area-inset-top)',
             })}
         >
             {/* a flex middle child only centers WITHIN the leftover space between start/end -

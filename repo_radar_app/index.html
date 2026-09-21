@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover lets the WebView draw under the (now transparent/edge-to-edge)
+         status bar and navigation bar on the Capacitor Android build, and is what makes
+         env(safe-area-inset-*) report real values instead of 0 - see App.tsx's own use of them. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>repo_radar_app</title>
   </head>
   <body>

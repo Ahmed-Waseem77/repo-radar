@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">radar-repo</string>
+    <string name="title_activity_main">radar-repo</string>
+    <string name="package_name">com.radar_repo.app</string>
+    <string name="custom_url_scheme">com.radar_repo.app</string>
+</resources>

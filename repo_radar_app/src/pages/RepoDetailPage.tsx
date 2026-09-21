@@ -25,14 +25,17 @@ export interface RepoDetailPageProps {
     trackedKeys: Set<string>
     onToggleTrack: (repo: RepoDto) => void
     onUntrack: (repoKey: string) => void
-    // clears the raw search text - wired to App.tsx's own setSearch('') so a narrow screen's
-    // side-panel search overlay (see RepoDetailView) can dismiss itself from a backdrop tap
-    // without needing App.tsx's own state setter threaded down any further than this.
+    // clears the raw search text - used when picking a DIFFERENT repo from the side panel (see
+    // selectSidePanelRepo below), not for closing the panel itself (see onClosePanel).
     onClearSearch: () => void
-    // narrow-screen-only: App.tsx's own toggle for whether the search overlay is showing (see
-    // its handleBack) - resolved here against this page's own `narrow`/`search` before being
-    // handed to RepoDetailView, so App.tsx doesn't need to know about either.
+    // narrow-screen-only: App.tsx's own state for whether the search overlay is showing - opened
+    // exclusively by an explicit tap on the search button beside the bottom search field (see
+    // App.tsx), never just by typing. Resolved here against this page's own `search` before being
+    // handed to RepoDetailView as searchPanelVisible.
     searchPanelOpen: boolean
+    // closes the overlay from a backdrop tap, without touching the search text - App.tsx's own
+    // setSearchPanelOpen(false), threaded straight through to RepoDetailView.
+    onClosePanel: () => void
     // reports this page's own refresh control up to App.tsx so it can render in the AppBar (see
     // there) on a narrow screen instead of inline here - `null` on unmount, so App.tsx clears it
     // rather than leaving a stale control pointing at a page that's no longer showing.
@@ -52,6 +55,7 @@ export function RepoDetailPage({
     onUntrack,
     onClearSearch,
     searchPanelOpen,
+    onClosePanel,
     onRefreshControlsChange,
 }: RepoDetailPageProps) {
     const navigate = useNavigate()
@@ -77,6 +81,8 @@ export function RepoDetailPage({
         setRefreshToken(0)
         setLastKnownRepo(null)
     }
+
+    const hasQuery = search.trim() !== ''
 
     const cacheHit = refreshToken === 0 && cachedRepo !== null && cachedRepo.owner === owner && cachedRepo.title === name
     const {
@@ -127,6 +133,7 @@ export function RepoDetailPage({
         onToggleTrack,
         onUntrack,
         onSelectRepo: selectSidePanelRepo,
+        narrow,
     })
 
     if (!repo) {
@@ -152,8 +159,8 @@ export function RepoDetailPage({
             sidePanelState={sidePanelState}
             onRefresh={() => setRefreshToken((token) => token + 1)}
             refreshing={isRefreshing}
-            searchPanelVisible={narrow && searchPanelOpen && search.trim() !== ''}
-            onClearSearch={onClearSearch}
+            searchPanelVisible={narrow && searchPanelOpen && hasQuery}
+            onClosePanel={onClosePanel}
         />
     )
 }

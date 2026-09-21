@@ -50,15 +50,16 @@ export interface RepoDetailViewProps {
     // App.tsx's AppBar instead (see RepoDetailPage's onRefreshControlsChange).
     onRefresh: () => void
     refreshing: boolean
-    // narrow-screen-only, already fully resolved by RepoDetailPage (narrow && the back button's
-    // own toggle && there's actually a query to show results for) - this is what drives the side
-    // panel showing as an overlay at all. On a wide screen the panel is a permanent column
-    // regardless, so this only matters in the narrow branch.
+    // narrow-screen-only, already fully resolved by RepoDetailPage (narrow && App.tsx's own
+    // searchPanelOpen, opened exclusively by the search button beside the bottom search field -
+    // && there's actually a query to show results for). On a wide screen the panel is a
+    // permanent column regardless, so this only matters in the narrow branch.
     searchPanelVisible: boolean
-    // dismisses the overlay from a backdrop tap without leaving this page - App.tsx's own
-    // setSearch(''), threaded down through RepoDetailPage. The AppBar's own back button/Escape
-    // reach the same outcome through App.tsx's handleBack instead (see there).
-    onClearSearch: () => void
+    // closes the overlay from a backdrop tap without leaving this page or touching the search
+    // text itself - App.tsx's own setSearchPanelOpen(false), threaded down through
+    // RepoDetailPage, so the search button can reopen it without the user retyping anything. The
+    // AppBar's own back button/Escape reach the same outcome through App.tsx's handleBack instead.
+    onClosePanel: () => void
 }
 
 // shared by both layouts below - whichever section is active, rendered exactly the same way
@@ -76,7 +77,7 @@ function ActiveTabSection({ activeTab, repo, starsPeriod }: { activeTab: DetailT
 // regardless of which page opened it, rather than duplicating a back button per page. On a
 // narrow screen the same is true of the search overlay below: dismissing it is exclusively an
 // AppBar-back/Escape or backdrop-tap action, never a second close button inside the overlay itself.
-export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState, onRefresh, refreshing, searchPanelVisible, onClearSearch }: RepoDetailViewProps) {
+export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState, onRefresh, refreshing, searchPanelVisible, onClosePanel }: RepoDetailViewProps) {
     const narrow = useNarrowScreen()
     const { data: latestRelease } = useLatestRelease({ owner: repo.owner, name: repo.title })
     const [activeTab, setActiveTab] = useState<DetailTab>('readme')
@@ -156,12 +157,11 @@ export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState, o
                     elsewhere" from the design. Only mounted while the overlay is open, so it
                     never eats clicks the rest of the time. */}
                 {searchPanelVisible && (
-                    <Box onClick={onClearSearch} sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0, 0, 0, 0.4)', zIndex: 1 }} />
+                    <Box onClick={onClosePanel} sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0, 0, 0, 0.4)', zIndex: 1 }} />
                 )}
                 {/* slides in from the left edge over the content above; slides back out the same
                     way when dismissed (backdrop tap, or the AppBar's own back button/Escape via
-                    App.tsx's handleBack - see there for why that toggles this rather than
-                    immediately closing this whole page). */}
+                    App.tsx's handleBack). */}
                 <Slide direction="right" in={searchPanelVisible} mountOnEnter unmountOnExit>
                     <Box sx={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: SIDE_PANEL_WIDTH, zIndex: 2, bgcolor: 'background.default', boxShadow: 6, overflow: 'auto' }}>
                         <SidePanel sidePanelState={sidePanelState} selectedRepoKey={selectedRepoKey} />

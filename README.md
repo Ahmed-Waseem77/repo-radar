@@ -13,6 +13,34 @@ cd repo_radar
 ```
 # Features
 
+- Search GitHub repos and track the ones you want to keep an eye on
+- Trending repos: most starred repos created in the last 3 months
+- Repo detail view with README, issues, pull requests, and a weekly star history chart
+- Language distribution per repo
+- Dedicated Tracked Repos page with its own search
+- Dark and light theme
+- Keyboard shortcuts for search and navigation
+- Responsive layout for narrow screens, with its own search panel
+- Android app via Capacitor
+- Storybook based component library
+- Custom 404 page
+
+## Screenshots
+
+<table>
+<tr>
+<td><img src="meta/desktop-repo-detail-stars.png" width="420" alt="Repo detail view on desktop, star history tab" /></td>
+<td><img src="meta/desktop-tracked-repos-light.png" width="420" alt="Tracked repos page, light theme" /></td>
+<td><img src="meta/desktop-tracked-repos-dark.png" width="420" alt="Tracked repos page, dark theme" /></td>
+</tr>
+<tr>
+<td><img src="meta/mobile-home-dark.png" width="200" alt="Homepage on mobile, dark theme" /></td>
+<td><img src="meta/mobile-repo-detail-readme.png" width="200" alt="Repo detail view on mobile, README tab" /></td>
+<td><img src="meta/mobile-repo-detail-stars.png" width="200" alt="Repo detail view on mobile, star history tab" /></td>
+<td><img src="meta/mobile-search-panel-dark.png" width="200" alt="Search panel on mobile, dark theme" /></td>
+</tr>
+</table>
+
 # Local Development
 
 >[!IMPORTANT]
@@ -66,6 +94,24 @@ npm run build -w repo_radar_lib && npm run build -w repo_radar_app
 ```
 
 3. Output Directory: `repo_radar_app/dist`
+
+Since Root Directory is the repo root (not `repo_radar_app`), `vercel.json` lives at the repo
+root too, with a catch-all rewrite to `index.html` so client-side routes (e.g. `/repos/owner/name`)
+don't 404 at Vercel's edge before React Router gets to handle them. `repo_radar_app`'s build also
+copies `index.html` to `dist/404.html` as a second fallback, since Vercel serves that file for any
+unmatched static path even without a rewrite.
+
+## Android Development
+
+Android/Movile development is done by using capacitor
+
+> Make sure you have `ANDROID_HOME` env var set to Android SDK path
+
+after `npm install` in root repo:
+
+```
+npx cap run android
+```
 
 # GenAI Usage Transparency
 

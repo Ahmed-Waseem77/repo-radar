@@ -9,6 +9,13 @@ import type { TrackedRepo } from '../api/trackedRepos'
 // how many of the top results it shows at once.
 const SIDE_PANEL_REPO_COUNT = 10
 
+// no perceptible delay (setTimeout(0) still yields a tick, but nothing a person can feel) -
+// narrow screens don't live-query on every keystroke at all (the panel itself stays hidden until
+// the search button is explicitly pressed - see RepoDetailView), so there's no keystroke-flood to
+// protect against the way there is on a wide screen's always-visible column.
+const NARROW_DEBOUNCE_MS = 0
+const WIDE_DEBOUNCE_MS = 400
+
 export interface UseSidePanelReposParams {
     search: string
     searchScope: 'global' | 'tracked'
@@ -18,6 +25,7 @@ export interface UseSidePanelReposParams {
     onUntrack: (repoKey: string) => void
     // switches the detail view to a DIFFERENT repo clicked in the side panel
     onSelectRepo: (repo: RepoDto) => void
+    narrow: boolean
 }
 
 // 'empty' is nothing to show at all regardless of any filter (e.g. nothing tracked yet); 'notFound'
@@ -43,8 +51,9 @@ export function useSidePanelRepos({
     onToggleTrack,
     onUntrack,
     onSelectRepo,
+    narrow,
 }: UseSidePanelReposParams): SidePanelState {
-    const debouncedSearch = useDebouncedValue(search.trim(), 400)
+    const debouncedSearch = useDebouncedValue(search.trim(), narrow ? NARROW_DEBOUNCE_MS : WIDE_DEBOUNCE_MS)
 
     const {
         data: searchData,

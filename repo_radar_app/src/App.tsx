@@ -8,6 +8,7 @@ import type { SearchFieldHint, SearchFieldScopePill } from '@radar-repo/radar-re
 import HomeTwoToneIcon from '@mui/icons-material/HomeTwoTone'
 import BookmarksTwoToneIcon from '@mui/icons-material/BookmarksTwoTone'
 import ChevronLeftTwoToneIcon from '@mui/icons-material/ChevronLeftTwoTone'
+import SearchTwoToneIcon from '@mui/icons-material/SearchTwoTone'
 import { RefreshButton } from './components/RepoDetail'
 import type { RefreshButtonProps } from './components/RepoDetail'
 import { useEscapeAction } from './hooks/useEscapeAction'
@@ -94,9 +95,10 @@ function App() {
   const [searchScope, setSearchScope] = useState<SearchScope>('global')
   const [selectedRepo, setSelectedRepo] = useState<RepoDto | null>(null)
   // narrow-screen-only: whether RepoDetailView's side panel is showing as a search-results
-  // overlay (see the render below and handleBack) - a plain toggle rather than being derived
-  // straight from `search` itself, so typing a query doesn't pop the overlay open on its own;
-  // only the back button does that (see handleBack).
+  // overlay - opened EXCLUSIVELY by an explicit tap on the search button beside the bottom
+  // search field (see handleSearchButtonClick and the render below), never just by typing.
+  // Closed by tapping the overlay's own backdrop, selecting a result, or the AppBar back
+  // button/Escape (see handleBack).
   const [searchPanelOpen, setSearchPanelOpen] = useState(false)
   // narrow-screen-only: the currently-open repo detail page's own refresh control, reported up
   // via RepoDetailPage's onRefreshControlsChange so it can render in the AppBar's end slot
@@ -132,13 +134,6 @@ function App() {
   const selectRepo = useCallback(
     (repo: RepoDto) => {
       setSelectedRepo(repo)
-      // opening a repo (from Homepage/TrackedRepos, possibly with a search still active - the
-      // query itself is left alone, it still drives the newly-opened page's own side panel/
-      // overlay content) must never itself reveal the narrow-screen search overlay - only an
-      // explicit back-button press from within the detail view does that (see handleBack).
-      // Without this, a leftover `true` from whatever repo was open before this click could
-      // otherwise carry straight over into the new one.
-      setSearchPanelOpen(false)
       navigate(`/repos/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.title)}`, { replace: page === 'repoDetail' })
     },
     [navigate, page],
@@ -158,10 +153,9 @@ function App() {
     setSelectedRepo(null)
   }
 
-  // same "adjust state during render" reset as selectedRepo above - leaving either page or an
-  // active search behind should always leave the overlay/refresh-control state behind with it,
-  // rather than a stale true/non-null value lingering for the next repo/page to accidentally
-  // inherit.
+  // same "adjust state during render" reset as selectedRepo above - leaving either the repo
+  // detail page, or the search that the panel is showing results for, should always leave the
+  // panel closed behind too, rather than it lingering open for whatever comes next.
   if ((page !== 'repoDetail' || search.trim() === '') && searchPanelOpen) {
     setSearchPanelOpen(false)
   }
@@ -178,23 +172,20 @@ function App() {
     LOGO_ANIMATION_MAX_INTERVAL_MS,
   )
 
-  // Both Escape and the AppBar's back button (below) trigger this same "step back" action.
-  // On a narrow screen with an active search while viewing a repo, that means toggling
-  // RepoDetailView's side panel open as a search-results overlay (see the render below) rather
-  // than immediately leaving the page - typing a query alone deliberately doesn't show it (see
-  // searchPanelOpen above), only this does. Pressed again, it toggles the overlay back off
-  // without leaving the page either, since the query itself is still there to act on. On a wide
-  // screen the side panel is just a permanent column, so none of this applies there - closing an
-  // open detail view stays the priority, as before, and otherwise this just clears the search.
+  // Both Escape and the AppBar's back button (below) trigger this same "step back" action: if
+  // the narrow-screen search panel is currently open, close JUST that (the query itself is left
+  // alone, in case the user wants to reopen it) rather than leaving the page underneath it.
+  // Otherwise this falls back to its original behavior: close an open detail view, or otherwise
+  // clear the search.
   const hasBackAction = page === 'repoDetail' || search.trim() !== ''
   const handleBack = useCallback(() => {
-    if (narrow && page === 'repoDetail' && search.trim() !== '') {
-      setSearchPanelOpen((open) => !open)
+    if (searchPanelOpen) {
+      setSearchPanelOpen(false)
       return
     }
     if (page === 'repoDetail') closeDetailView()
     else setSearch('')
-  }, [narrow, page, search, closeDetailView])
+  }, [searchPanelOpen, page, closeDetailView])
 
   useEscapeAction(searchRef, [{ isActive: hasBackAction, onTrigger: handleBack }])
 
@@ -276,7 +267,18 @@ function App() {
   }, [])
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        // the narrow-screen bottom search bar below already reserves its own safe-area-inset
+        // bottom padding - this covers the other case (wide/tablet layouts, no dedicated bottom
+        // bar), so a transparent edge-to-edge nav bar never sits over this page's own content
+        // regardless of layout. 0 on a regular browser either way - see that bar's own comment.
+        pb: narrow ? 0 : 'env(safe-area-inset-bottom)',
+      }}
+    >
       {/* omitted entirely on the 404 page - it has its own full-bleed hex-grid background and
           doesn't need the normal chrome above it. The search field ref still just goes unset in
           that case, which every consumer (useEscapeAction, searchRef.current?.focus()) already
@@ -431,6 +433,7 @@ function App() {
                       onUntrack={untrack}
                       onClearSearch={() => setSearch('')}
                       searchPanelOpen={searchPanelOpen}
+                      onClosePanel={() => setSearchPanelOpen(false)}
                       onRefreshControlsChange={handleRefreshControlsChange}
                     />
                   }
@@ -446,13 +449,24 @@ function App() {
           exactly enough room for it, rather than needing a manually-tracked height reserved via
           padding on the content below. */}
       {narrow && page !== 'other' && (
-        <MuiAppBar position="static" color="transparent" elevation={8} sx={{ bgcolor: 'background.paper' }}>
+        <MuiAppBar
+          position="static"
+          color="transparent"
+          elevation={8}
+          sx={{
+            bgcolor: 'background.paper',
+            // 0 on a regular browser - only real inside the Capacitor Android build's
+            // edge-to-edge WebView (see MainActivity/styles.xml), where it pushes this bar's
+            // content up above the gesture-nav pill/3-button nav bar instead of sitting under it.
+            pb: 'env(safe-area-inset-bottom)',
+          }}
+        >
           {/* `dense` + an explicit fixed `px` (rather than Toolbar's own default gutters, which
               step up at the `sm` breakpoint - still reachable within our own wider "narrow" band)
               is what actually makes this sit flush against RepoDetailView's own bottom tab bar
               with no visible gap or margin mismatch between the two - same horizontal inset,
               same compact vertical sizing, on both. */}
-          <Toolbar variant="dense" sx={{ px: 2 }}>
+          <Toolbar variant="dense" sx={{ px: 2, gap: 1 }}>
             <SearchField
               ref={searchRef}
               value={search}
@@ -463,6 +477,19 @@ function App() {
               onScopePillRemove={handleScopePillRemove}
               sx={{ width: '100%', maxWidth: 'none' }}
             />
+            {/* the ONLY thing that ever opens RepoDetailView's search-results overlay - typing
+                alone never does (see searchPanelOpen above). Only meaningful on the repo detail
+                page itself (Homepage/TrackedRepos already show results inline, live, with no
+                overlay to reveal), and only once there's actually a query to show results for. */}
+            {page === 'repoDetail' && (
+              <Tooltip title="Show search results">
+                <span>
+                  <IconButton onClick={() => setSearchPanelOpen(true)} disabled={search.trim() === ''} aria-label="Show search results" edge="end">
+                    <SearchTwoToneIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
           </Toolbar>
         </MuiAppBar>
       )}

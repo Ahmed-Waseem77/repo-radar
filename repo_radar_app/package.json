@@ -19,6 +19,7 @@
     "@mui/x-charts": "^9.14.0",
     "@radar-repo/radar-repo-lib": "*",
     "mui-markdown": "^3.0.1",
+    "prism-react-renderer": "^2.4.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",

@@ -1,5 +1,6 @@
 export * from './useGetRepo'
 export * from './useLatestRelease'
+export * from './useReadme'
 export * from './useSearchRepo'
 export * from './useTrackedRepos'
 export * from './useTrendingRepos'

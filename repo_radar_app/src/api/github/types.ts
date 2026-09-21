@@ -74,3 +74,10 @@ export interface GithubRelease {
     name: string | null
     html_url: string
 }
+
+// GET /repos/{owner}/{repo}/readme - GitHub 404s this for a repo with no README at its root -
+// see getReadme. `content` is base64, chunked into 60-char lines (hence the newlines in it).
+export interface GithubReadme {
+    content: string
+    encoding: string
+}

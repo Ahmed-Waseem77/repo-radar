@@ -81,3 +81,45 @@ export interface GithubReadme {
     content: string
     encoding: string
 }
+
+export interface GithubIssueLabel {
+    name: string
+    color: string
+}
+
+// GET /repos/{owner}/{repo}/issues - only the fields we actually read. GitHub's REST API
+// considers every pull request an issue (but not every issue a pull request), so this endpoint's
+// response is a mix of both - `pull_request` is present (see getIssues' isPullRequest) only on
+// the items that are actually PRs. Its own `id` there is an ISSUE id, not that PR's real id -
+// getting the real one would need the separate "List pull requests" endpoint, which isn't needed
+// here since nothing beyond what's already on this response is read.
+export interface GithubIssue {
+    id: number
+    number: number
+    title: string
+    state: 'open' | 'closed'
+    html_url: string
+    comments: number
+    created_at: string
+    user: GithubOwner | null
+    labels: GithubIssueLabel[]
+    pull_request?: {
+        html_url: string | null
+        merged_at: string | null
+    }
+}
+
+// GET /repos/{owner}/{repo}/labels - only the fields we actually read
+export interface GithubLabel {
+    name: string
+    color: string
+}
+
+// GET /repos/{owner}/{repo}/stargazers/history - one calendar week's worth of star activity.
+// `week` is Unix seconds for the start of that week; `days` (Sunday-start, unused here) is the
+// same week's total broken down per day - see getStarHistory.
+export interface GithubStarHistoryWeek {
+    week: number
+    total: number
+    days: number[]
+}

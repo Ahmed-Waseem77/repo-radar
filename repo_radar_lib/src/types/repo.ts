@@ -37,5 +37,10 @@ export interface RepoOverviewDto {
     onTrack: (event: React.MouseEvent<HTMLButtonElement>) => void,
     onDetailedView: (event: React.SyntheticEvent<HTMLElement>) => void,
     archived: boolean,
-    archivalDate?: string
+    archivalDate?: string,
+    // ISO timestamp of when the repo was created - used by RepoDetailView's Star History tab to
+    // tell a genuinely young repo apart from one that just hasn't gained many stars yet.
+    // Optional (rather than required) so the many loading-placeholder/Storybook fixture objects
+    // across the app that build a RepoOverviewDto-shaped value don't all need to supply one.
+    createdAt?: string
 }

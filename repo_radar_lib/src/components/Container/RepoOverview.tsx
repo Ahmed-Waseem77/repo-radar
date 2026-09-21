@@ -123,11 +123,17 @@ export default function RepoOverview({
                 flexWrap: 'wrap',
                 rowGap: 1,
             }}>
-                <Stack direction="column" spacing={-1} sx={{ minWidth: 0 }}>
+            <Stack direction="row">
+            <Stack direction="column" spacing={-1} sx={{ minWidth: 0 }}>
                     <Stack direction="row" sx={{ minWidth: 0, alignItems: 'center', gap: 1 }}>
                         <TextLink href={props.url} variant='h5' noWrap sx={{ minWidth: 0, ...interactiveSx }}>
                             {props.title}
                         </TextLink>
+                    </Stack>
+                    <TextLink href={props.ownerUrl} variant='caption' color='textSecondary' noWrap sx={interactiveSx}>
+                        {props.owner}
+                    </TextLink>
+                </Stack>
                         {props.latestRelease === undefined ? (
                             // still fetching - undefined specifically means "in flight" (as
                             // opposed to `null`, meaning the fetch settled and found no release).
@@ -159,10 +165,6 @@ export default function RepoOverview({
                                 })}
                             />
                         )}
-                    </Stack>
-                    <TextLink href={props.ownerUrl} variant='caption' color='textSecondary' noWrap sx={interactiveSx}>
-                        {props.owner}
-                    </TextLink>
                 </Stack>
                 <Stack direction="row" sx={{ minWidth: 0, flexWrap: 'wrap', gap: 1 }}>
                     {props.archived &&

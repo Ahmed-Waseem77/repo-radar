@@ -1,4 +1,4 @@
-import { Box, alpha } from '@mui/material'
+import { Box, alpha, darken, getLuminance, lighten } from '@mui/material'
 import type { BoxProps, Theme } from '@mui/material'
 import type { ReactElement } from 'react'
 import WarningTwoToneIcon from '@mui/icons-material/WarningTwoTone'
@@ -54,6 +54,18 @@ const iconSizePx: Record<PillSize, number> = {
 
 const isColorVariant = (variant: PillVariant): variant is PillColorVariant => variant !== 'default'
 
+// an arbitrary caller-supplied `color` (e.g. a GitHub label's own hex) has no guarantee of
+// contrasting against this app's background the way the hand-picked semantic palette colors
+// already do - a pale label color used as literal text in light mode (or a near-black one in
+// dark mode) can end up nearly unreadable against this app's own background. Only nudging colors
+// that actually cross a readability threshold keeps everything already fine (every semantic
+// variant, most saturated label colors) untouched.
+function readableHue(hue: string, scheme: 'light' | 'dark'): string {
+    const luminance = getLuminance(hue)
+    if (scheme === 'light') return luminance > 0.5 ? darken(hue, 0.45) : hue
+    return luminance < 0.2 ? lighten(hue, 0.45) : hue
+}
+
 export const Pill = ({
     label,
     variant = 'default',
@@ -78,7 +90,7 @@ export const Pill = ({
                     // strictly tonal - a translucent tint of the hue plus a border/text in that
                     // same hue, never a solid fill - so a Pill never reads as a clickable Button
                     // at a glance.
-                    const hue = color ?? (isColorVariant(variant) ? theme.palette[variant].main : theme.palette.pillDefault.text)
+                    const hue = readableHue(color ?? (isColorVariant(variant) ? theme.palette[variant].main : theme.palette.pillDefault.text), 'light')
 
                     // `hue` above is baked to whichever scheme `theme.palette` was resolved from
                     // (this theme's default/light scheme) - that's a non-issue for semantic hues
@@ -87,7 +99,10 @@ export const Pill = ({
                     // pulling explicitly, the same way RepoOverview's inverted "Latest Commit"
                     // color does. `alpha()` also needs an actual parseable color, not a
                     // `theme.vars` CSS-variable reference string.
-                    const darkHue = color ?? (isColorVariant(variant) ? theme.palette[variant].main : (theme.colorSchemes?.dark?.palette?.pillDefault?.text ?? '#EAEDEA'))
+                    const darkHue = readableHue(
+                        color ?? (isColorVariant(variant) ? theme.palette[variant].main : (theme.colorSchemes?.dark?.palette?.pillDefault?.text ?? '#EAEDEA')),
+                        'dark',
+                    )
 
                     return {
                         display: 'inline-flex',

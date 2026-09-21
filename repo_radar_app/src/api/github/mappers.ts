@@ -52,6 +52,7 @@ export function mapGithubRepoToDto(repo: GithubRepo, extras: RepoExtras): RepoDt
         // GitHub's REST API doesn't expose when a repo was archived, so this stays unset rather
         // than guessing from e.g. updated_at.
         archivalDate: undefined,
+        createdAt: repo.created_at,
         // prefer the SPDX id (e.g. "MIT") when GitHub could confidently detect one; "NOASSERTION"
         // means it found a LICENSE file but couldn't match it to a known license, so fall back to
         // the license's own name in that case. null/no license -> renders the "Unlicensed" pill.

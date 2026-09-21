@@ -13,7 +13,7 @@ cd repo_radar
 > Configure a *READ ONLY* PAT token as VITE will bundle it with the app
 > you can do `set -a && source .env && set +a` for a key value pair env file
 
-### Install Dependencies:
+Install Dependencies:
 
 ``` shell
 npm install
@@ -77,6 +77,17 @@ Any AI output was reviewed beforehand
 # Architecture
 
 # Enhancements to requriements
+- Trending repos
+  - gets the most starred repos that were created in the last 3 months
+- Dark/Light Theme
+- Search Tracked Repos
+- Display Repo Language Distribution
+- Display Repo Readme
+- Display Repo PRs
+- Display Repo Starring rate in the last 6 month as a line chart
+- SearchField and Keyboard Shortcuts
+- Storybook integration (the website was largely development Component-first)
 
 # Design Decisions
-- Not using something like `Zod`: Github API is versioned so no need to validate schema on runtime, using it adds burden to performance and bundle size
+- Not using something like `Zod`: Github API is versioned so no need to validate schema on runtime, using it adds burden to performance computing schema at runtime.
+- Not using state management: The scope was honestly small, and Parent heirarchies were clear and manageable, passing props around was the better and kind on the bundle size.

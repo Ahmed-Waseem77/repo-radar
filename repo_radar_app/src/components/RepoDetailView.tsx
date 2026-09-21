@@ -6,6 +6,7 @@ import {
     ButtonGroup as MuiButtonGroup,
     Divider,
     FormControl,
+    IconButton,
     InputLabel,
     MenuItem,
     Select,
@@ -13,6 +14,7 @@ import {
     Table,
     TableCell,
     TablePagination,
+    Tooltip,
     Typography,
     Stack,
     ToggleButton,
@@ -33,6 +35,7 @@ import CancelTwoToneIcon from '@mui/icons-material/CancelTwoTone'
 import ChatBubbleOutlineTwoToneIcon from '@mui/icons-material/ChatBubbleOutlineTwoTone'
 import CheckCircleTwoToneIcon from '@mui/icons-material/CheckCircleTwoTone'
 import RadioButtonUncheckedTwoToneIcon from '@mui/icons-material/RadioButtonUncheckedTwoTone'
+import RefreshTwoToneIcon from '@mui/icons-material/RefreshTwoTone'
 import TimelineTwoToneIcon from '@mui/icons-material/TimelineTwoTone'
 import { useIssues, useLabels, useLatestRelease, usePullRequests, useReadme, useStarHistory } from '../hooks/api'
 import type { SidePanelState } from '../hooks/useSidePanelRepos'
@@ -60,6 +63,10 @@ export interface RepoDetailViewProps {
     // the caller to switch selection (not to open/close this view), so clicking a card here just
     // changes `repo` above
     sidePanelState: SidePanelState
+    // forces a fresh fetch of `repo` itself (RepoDetailPage's own getRepo call), for a session
+    // that's been open long enough for its cached/originally-fetched data to go stale
+    onRefresh: () => void
+    refreshing: boolean
 }
 
 const SIDE_PANEL_WIDTH = 300
@@ -648,7 +655,7 @@ function StarHistorySection({ owner, name, periodMonths }: { owner: string; name
 // the back-chevron / Escape affordance for closing this view lives in App.tsx's AppBar (start
 // slot, before the logo) instead of here - keeps the "how do I close this" answer in one place
 // regardless of which page opened it, rather than duplicating a back button per page.
-export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState }: RepoDetailViewProps) {
+export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState, onRefresh, refreshing }: RepoDetailViewProps) {
     const { data: latestRelease } = useLatestRelease({ owner: repo.owner, name: repo.title })
     const [activeTab, setActiveTab] = useState<DetailTab>('readme')
     const starsPeriod = getStarHistoryPeriod(repo.createdAt)
@@ -720,35 +727,56 @@ export function RepoDetailView({ repo, tracked, onToggleTrack, sidePanelState }:
                         languageCutoff={20}
                     />
                     <Stack direction="row" spacing={2} sx={{ px: 2, alignItems: 'center', justifyContent: 'space-between' }}>
-                        {/* size="small" on the group cascades to every button - matches the lib
-                            Button's own "small" size used for Track/Untrack beside it, so the two
-                            sit at the same height instead of the group's larger MUI default */}
-                        <MuiButtonGroup variant="outlined" size="small">
-                            {TABS.map((tab) => (
+                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                            {/* size="small" on the group cascades to every button - matches the lib
+                                Button's own "small" size used for Track/Untrack beside it, so the two
+                                sit at the same height instead of the group's larger MUI default */}
+                            <MuiButtonGroup variant="outlined" size="small">
+                                {TABS.map((tab) => (
+                                    <MuiButton
+                                        key={tab.id}
+                                        variant={activeTab === tab.id ? 'contained' : 'outlined'}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        startIcon={<tab.icon fontSize="small" />}
+                                    >
+                                        {tab.label}
+                                    </MuiButton>
+                                ))}
                                 <MuiButton
-                                    key={tab.id}
-                                    variant={activeTab === tab.id ? 'contained' : 'outlined'}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    startIcon={<tab.icon fontSize="small" />}
+                                    variant={activeTab === 'stars' ? 'contained' : 'outlined'}
+                                    onClick={() => setActiveTab('stars')}
+                                    startIcon={<TimelineTwoToneIcon fontSize="small" />}
+                                    disabled={starsPeriod.disabled}
+                                    sx={{ maxWidth: 220 }}
                                 >
-                                    {tab.label}
+                                    {/* the "too young" message is long enough to wrap or blow out the
+                                        button group's own width - this is what keeps it to one line,
+                                        truncated with an ellipsis, instead */}
+                                    <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {getStarsTabLabel(starsPeriod)}
+                                    </Box>
                                 </MuiButton>
-                            ))}
-                            <MuiButton
-                                variant={activeTab === 'stars' ? 'contained' : 'outlined'}
-                                onClick={() => setActiveTab('stars')}
-                                startIcon={<TimelineTwoToneIcon fontSize="small" />}
-                                disabled={starsPeriod.disabled}
-                                sx={{ maxWidth: 220 }}
-                            >
-                                {/* the "too young" message is long enough to wrap or blow out the
-                                    button group's own width - this is what keeps it to one line,
-                                    truncated with an ellipsis, instead */}
-                                <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {getStarsTabLabel(starsPeriod)}
-                                </Box>
-                            </MuiButton>
-                        </MuiButtonGroup>
+                            </MuiButtonGroup>
+                            <Tooltip title={refreshing ? 'Refreshing...' : 'Refresh repo details'}>
+                                {/* a disabled IconButton wouldn't fire the hover events Tooltip
+                                    needs to show itself - wrapping in a span (which stays
+                                    interactive either way) is the standard way around that. */}
+                                <span>
+                                    <IconButton size="small" onClick={onRefresh} disabled={refreshing} aria-label="Refresh repo details">
+                                        <RefreshTwoToneIcon
+                                            fontSize="small"
+                                            sx={{
+                                                animation: refreshing ? 'spin 1s linear infinite' : 'none',
+                                                '@keyframes spin': {
+                                                    from: { transform: 'rotate(0deg)' },
+                                                    to: { transform: 'rotate(360deg)' },
+                                                },
+                                            }}
+                                        />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                        </Stack>
                         <Button
                             label={tracked ? 'Untrack' : 'Track'}
                             onClick={onToggleTrack}

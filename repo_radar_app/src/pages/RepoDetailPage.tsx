@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Box, CircularProgress } from '@mui/material'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getRepoKey, Pill } from '@radar-repo/radar-repo-lib'
@@ -38,9 +39,45 @@ export function RepoDetailPage({
 }: RepoDetailPageProps) {
     const navigate = useNavigate()
     const { owner = '', name = '' } = useParams()
-    const cacheHit = cachedRepo !== null && cachedRepo.owner === owner && cachedRepo.title === name
+    const routeKey = `${owner}/${name}`
 
-    const { data: fetchedRepo, error } = useGetRepo(cacheHit ? null : { owner, name })
+    // a manual refresh (RepoDetailView's refresh button) forces a fresh getRepo call even when a
+    // `cachedRepo` fast path would otherwise skip it - once bumped, this repo trusts fetched data
+    // from then on rather than the (potentially stale, e.g. from an old session) cached object.
+    // `lastKnownRepo` is what keeps a refresh from flashing the page to its loading state: the
+    // hook's own `data` clears to null the instant a new fetch starts, but a refresh should read
+    // as "updating in place," not "reload the whole view" - see `repo` below.
+    // Both are scoped to whichever repo is currently being viewed, reset the moment that changes
+    // (adjusted during render - React's documented pattern for this, matching Homepage's own
+    // debounced-search reset - rather than an effect, since there's no external system here to
+    // synchronize with).
+    const [refreshToken, setRefreshToken] = useState(0)
+    const [lastKnownRepo, setLastKnownRepo] = useState<RepoDto | null>(null)
+    const [refreshedRouteKey, setRefreshedRouteKey] = useState(routeKey)
+    if (refreshedRouteKey !== routeKey) {
+        setRefreshedRouteKey(routeKey)
+        setRefreshToken(0)
+        setLastKnownRepo(null)
+    }
+
+    const cacheHit = refreshToken === 0 && cachedRepo !== null && cachedRepo.owner === owner && cachedRepo.title === name
+    const {
+        data: fetchedRepo,
+        loading: fetchLoading,
+        error,
+    } = useGetRepo(cacheHit ? null : { owner, name, refreshToken })
+
+    const resolvedRepo = cacheHit ? cachedRepo : fetchedRepo
+    if (resolvedRepo !== null && resolvedRepo !== lastKnownRepo) {
+        setLastKnownRepo(resolvedRepo)
+    }
+
+    // falls back to whatever was last shown while a refresh is in flight, rather than the fetch's
+    // own momentarily-null `data` - only a genuine navigation to an as-yet-unloaded repo (no cache
+    // hit, no fetch settled yet, nothing previously known) has no fallback and hits the loading
+    // state below.
+    const repo = resolvedRepo ?? lastKnownRepo
+    const isRefreshing = refreshToken > 0 && fetchLoading
 
     // switches to that repo - a `replace` navigation, same as switching repos already did before
     // this page existed, so one browser-back press still exits the view outright regardless of
@@ -57,8 +94,6 @@ export function RepoDetailPage({
         onUntrack,
         onSelectRepo: selectSidePanelRepo,
     })
-
-    const repo = cacheHit ? cachedRepo : fetchedRepo
 
     if (!repo) {
         if (error) {
@@ -81,6 +116,8 @@ export function RepoDetailPage({
             tracked={trackedKeys.has(getRepoKey(repo))}
             onToggleTrack={() => onToggleTrack(repo)}
             sidePanelState={sidePanelState}
+            onRefresh={() => setRefreshToken((token) => token + 1)}
+            refreshing={isRefreshing}
         />
     )
 }

@@ -5,6 +5,10 @@ import type { RepoDto } from '../../api/github/mappers'
 export interface UseGetRepoParams {
     owner: string
     name: string
+    // bump to force a fresh fetch even though owner/name haven't changed - e.g. a manual refresh
+    // button (RepoDetailPage). Irrelevant to callers that never need one; the key/effect below
+    // just fold it in when present.
+    refreshToken?: number
 }
 
 export interface UseGetRepoState {
@@ -20,7 +24,7 @@ interface Result {
 }
 
 function keyOf(params: UseGetRepoParams): string {
-    return `${params.owner}/${params.name}`
+    return `${params.owner}/${params.name}/${params.refreshToken ?? 0}`
 }
 
 // params is null when there's no repo to load yet - the hook stays idle instead of firing a
@@ -37,7 +41,7 @@ export function useGetRepo(params: UseGetRepoParams | null): UseGetRepoState {
         const controller = new AbortController()
         const key = keyOf(params)
 
-        getRepo({ ...params, signal: controller.signal })
+        getRepo({ owner: params.owner, name: params.name, signal: controller.signal })
             .then((data) => setResult({ key, data, error: null }))
             .catch((error: Error) => {
                 // a stale request being aborted by the next effect run isn't a real error
@@ -47,7 +51,7 @@ export function useGetRepo(params: UseGetRepoParams | null): UseGetRepoState {
 
         return () => controller.abort()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [params?.owner, params?.name])
+    }, [params?.owner, params?.name, params?.refreshToken])
 
     if (!params) {
         return { data: null, loading: false, error: null }

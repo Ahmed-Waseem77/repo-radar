@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Box, Collapse, Fade, IconButton, Stack, Typography } from '@mui/material'
 import { TransitionGroup } from 'react-transition-group'
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import type { Theme } from '@mui/material'
 import { AppBar, Button, ColorModeToggle, InlineCode, LogoIcon } from '@radar-repo/radar-repo-lib'
 import type { SearchFieldHint, SearchFieldScopePill } from '@radar-repo/radar-repo-lib'
@@ -13,9 +14,12 @@ import { useRandomInterval } from './hooks/useRandomInterval'
 import { useTrackedRepos } from './hooks/api'
 import { Homepage } from './pages/Homepage'
 import { TrackedRepos } from './pages/TrackedRepos'
+import { NotFoundPage } from './pages/NotFoundPage'
 import type { RepoDto } from './api/github/mappers'
 
-type Page = 'home' | 'tracked'
+// 'other' covers any unmatched route (the 404 page) - neither nav button highlights there,
+// which is correct: you're on neither of these pages.
+type Page = 'home' | 'tracked' | 'other'
 // 'global' hits the GitHub search API (Homepage); 'tracked' filters the already-loaded tracked
 // list client-side (TrackedRepos) and is shown as a removable "In Tracked:" pill in the field.
 type SearchScope = 'global' | 'tracked'
@@ -65,8 +69,11 @@ function navButtonSx(theme: Theme, selected: boolean) {
 }
 
 function App() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const page: Page = location.pathname === '/tracked' ? 'tracked' : location.pathname === '/' ? 'home' : 'other'
+
   const [search, setSearch] = useState('')
-  const [page, setPage] = useState<Page>('home')
   const [searchScope, setSearchScope] = useState<SearchScope>('global')
   const [selectedRepo, setSelectedRepo] = useState<RepoDto | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -162,17 +169,19 @@ function App() {
     pendingTrackedDefaultRef.current = false
     setSearchScope('tracked')
     setSearch('')
-    setPage('tracked')
+    navigate('/tracked')
     searchRef.current?.focus()
   })
 
   // a global search started while on Tracked Repos has nowhere to render there - silently swap
-  // to Homepage the moment it starts, rather than waiting for it to resolve. Adjusting state
-  // during render (React's documented "reset state when x changes" pattern) rather than in an
-  // effect: once page flips to 'home' this condition is false, so it settles in one extra render.
-  if (page === 'tracked' && searchScope === 'global' && search.trim() !== '') {
-    setPage('home')
-  }
+  // to Homepage the moment it starts, rather than waiting for it to resolve. navigate() is a real
+  // side effect (unlike a plain setState call), so - now that it drives this instead of a local
+  // `page` state - this has to live in an effect rather than the render body itself.
+  useEffect(() => {
+    if (page === 'tracked' && searchScope === 'global' && search.trim() !== '') {
+      navigate('/')
+    }
+  }, [page, searchScope, search, navigate])
 
   const searchHints: SearchFieldHint[] =
     page === 'tracked'
@@ -187,6 +196,11 @@ function App() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      {/* omitted entirely on the 404 page - it has its own full-bleed hex-grid background and
+          doesn't need the normal chrome above it. The search field ref still just goes unset in
+          that case, which every consumer (useEscapeAction, searchRef.current?.focus()) already
+          handles as a harmless no-op. */}
+      {page !== 'other' && (
       <AppBar
         ref={searchRef}
         searchValue={search}
@@ -236,7 +250,7 @@ function App() {
               label="Homepage"
               startIcon={<HomeTwoToneIcon />}
               onClick={() => {
-                setPage('home')
+                navigate('/')
                 setSearchScope('global')
                 setSearch('')
                 closeDetailView()
@@ -255,7 +269,7 @@ function App() {
                 pendingTrackedDefaultRef.current = true
                 setSearch('')
                 closeDetailView()
-                setPage('tracked')
+                navigate('/tracked')
               }}
               sx={(theme) => navButtonSx(theme, page === 'tracked')}
             />
@@ -263,6 +277,7 @@ function App() {
         }
         end={<ColorModeToggle />}
       />
+      )}
       {/* position:relative + each transitioning child pinned via inset:0 is what makes this a
           true crossfade rather than a fade-in-only: TransitionGroup keeps the OUTGOING keyed
           child mounted (playing its own exit) for the same `timeout` while the INCOMING one
@@ -271,28 +286,44 @@ function App() {
           normal flex flow. */}
       <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <TransitionGroup component={null}>
-          <Fade key={page} timeout={225}>
+          {/* the `location` passed to Routes is captured as part of THIS render's element tree -
+              once `location.pathname` changes and this Fade's key falls out of TransitionGroup's
+              current children, TransitionGroup keeps rendering ITS OWN cached copy of this exact
+              element (frozen route + all) for the exit animation, rather than asking App to
+              re-render it - so the outgoing page keeps showing its own content while fading out,
+              it doesn't jump to the new route early. */}
+          <Fade key={location.pathname} timeout={225}>
             <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
-              {page === 'home' ? (
-                <Homepage
-                  search={search}
-                  trackedKeys={trackedKeys}
-                  onToggleTrack={toggleTrack}
-                  selectedRepo={selectedRepo}
-                  onSelectRepo={selectRepo}
+              <Routes location={location}>
+                <Route
+                  path="/"
+                  element={
+                    <Homepage
+                      search={search}
+                      trackedKeys={trackedKeys}
+                      onToggleTrack={toggleTrack}
+                      selectedRepo={selectedRepo}
+                      onSelectRepo={selectRepo}
+                    />
+                  }
                 />
-              ) : (
-                <TrackedRepos
-                  search={searchScope === 'tracked' ? search : ''}
-                  trackedRepos={trackedRepos}
-                  loading={trackedLoading}
-                  error={trackedError}
-                  onUntrack={untrack}
-                  onToggleTrack={toggleTrack}
-                  selectedRepo={selectedRepo}
-                  onSelectRepo={selectRepo}
+                <Route
+                  path="/tracked"
+                  element={
+                    <TrackedRepos
+                      search={searchScope === 'tracked' ? search : ''}
+                      trackedRepos={trackedRepos}
+                      loading={trackedLoading}
+                      error={trackedError}
+                      onUntrack={untrack}
+                      onToggleTrack={toggleTrack}
+                      selectedRepo={selectedRepo}
+                      onSelectRepo={selectRepo}
+                    />
+                  }
                 />
-              )}
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
             </Box>
           </Fade>
         </TransitionGroup>
